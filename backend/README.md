@@ -1,4 +1,5 @@
 📥 Install Dependencies
+
 Run:pnpm install
 
 🗄️ Database Migrations
@@ -11,6 +12,7 @@ Apply safe updates
 
 🚀 Run the Server
 Development mode:pnpm dev
+
 Server will start at:http://localhost:3000
 
 
