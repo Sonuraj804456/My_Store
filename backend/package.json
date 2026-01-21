@@ -3,21 +3,39 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-  "build": "tsc",
-  "start": "node dist/server.js"
-},
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "migrate": "drizzle-kit push"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "express": "^5.2.1"
+    "@types/cors": "^2.8.19",
+    "@types/dotenv": "^8.2.3",
+    "bcryptjs": "^3.0.3",
+    "better-auth": "^1.4.16",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
+    "express": "^5.2.1",
+    "pg": "^8.17.1",
+    "pg-pool": "^3.11.0",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@better-auth/cli": "^1.4.16",
+    "@jest-mock/express": "^3.0.0",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.9",
+    "@types/pg": "^8.16.0",
+    "drizzle-kit": "^0.31.8",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
   }
 }
