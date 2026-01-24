@@ -18,10 +18,23 @@ export const auth = betterAuth({
     enabled: true,
   },
 
+  // 🔐 COOKIE CONFIG (THIS WAS MISSING)
+  cookies: {
+    session: {
+      name: "better-auth.session",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",   // ✅ REQUIRED for localhost cross-port
+        secure: false,     // ✅ MUST be false on localhost
+        path: "/",
+      },
+    },
+  },
+
   callbacks: {
     //@ts-ignore
     jwt: async ({ token, user }) => {
-      token.role = user?.role ?? "CREATOR"; // default fallback
+      token.role = user?.role ?? "CREATOR";
       return token;
     },
     //@ts-ignore
@@ -35,6 +48,6 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7,
   },
 
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 });

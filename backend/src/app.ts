@@ -8,7 +8,12 @@ import express, { type Express } from "express";
 const app: Express = express();
 
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3001",
+    credentials: true,
+  })
+);
 
 // API prefix
 app.use("/v1/api/auth", authRoutes);

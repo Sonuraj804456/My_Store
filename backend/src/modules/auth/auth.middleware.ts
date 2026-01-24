@@ -1,45 +1,30 @@
-import { auth } from "./auth.core";
 import { Request, Response, NextFunction } from "express";
 import { db } from "../../config/db";
-import { session, user } from "./auth.schema";
-import { eq, and, gt } from "drizzle-orm";
+import { session } from "./auth.schema";
+import { eq, gt } from "drizzle-orm";
 
-export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // Try to get session from BetterAuth first
-  const sessionFromAuth = await auth.api.getSession({
-    headers: new Headers(req.headers as Record<string, string>),
+export async function requireAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const authHeader = req.get("authorization");
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+
+  const sessionRecord = await db.query.session.findFirst({
+    where: eq(session.token, token),
+    with: { user: true },
   });
 
-  if (sessionFromAuth?.user) {
-    (req as any).user = sessionFromAuth.user;
-    return next();
+  if (!sessionRecord || sessionRecord.expiresAt < new Date()) {
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 
-  // If no BetterAuth session, try Bearer token
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    
-    try {
-      // Query the session from database
-      const sessionRecord = await db.query.session.findFirst({
-        where: and(
-          eq(session.token, token),
-          gt(session.expiresAt, new Date())
-        ),
-        with: {
-          user: true,
-        },
-      });
-
-      if (sessionRecord?.user) {
-        (req as any).user = sessionRecord.user;
-        return next();
-      }
-    } catch (error) {
-      console.error("Session validation error:", error);
-    }
-  }
-
-  return res.status(401).json({ error: "Unauthorized" });
+  (req as any).user = sessionRecord.user;
+  next();
 }
