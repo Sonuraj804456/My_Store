@@ -9,7 +9,8 @@
     // See also https://aka.ms/tsconfig/module
     "module": "commonjs",
     "target": "ES2020",
-    "types": [],
+    "types": ["node", "express"],
+    "typeRoots": ["./src/types", "./node_modules/@types"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -42,5 +43,10 @@
     "moduleDetection": "force",
     "moduleResolution": "node",
     "skipLibCheck": true,
-  }
+
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/types/**/*.d.ts"
+  ],
 }

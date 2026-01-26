@@ -2,13 +2,12 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
+  
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "test": "vitest run",
-    "migrate": "drizzle-kit push"
-  },
+  "dev": "ts-node-dev --files --project tsconfig.json src/server.ts",
+  "build": "tsc",
+  "db:migrate": "drizzle-kit migrate"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

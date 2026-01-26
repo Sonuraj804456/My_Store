@@ -24,3 +24,4 @@ declare module "better-auth" {
     };
   }
 }
+export {};
