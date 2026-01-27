@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3000
 
 # Run in dev mode
-CMD ["sh", "-c", "pnpm run db:migrate && pnpm run dev"]
+CMD ["pnpm", "run", "dev"]
