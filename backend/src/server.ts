@@ -9,7 +9,16 @@ async function seedAdmin() {
 
   if (!email || !password) return;
 
-  const existing = await userService.getByEmail(email);
+  let existing = null;
+
+  try {
+    existing = await userService.getByEmail(email);
+  } catch (err: any) {
+    // table doesn't exist yet → migrations not run
+    console.warn("Skipping admin seed: DB not ready");
+    return;
+  }
+
   if (existing) return;
 
   try {
@@ -28,6 +37,7 @@ async function seedAdmin() {
     console.error("Error creating admin user:", error);
   }
 }
+
 
 const PORT = process.env.PORT || 3000;
 
