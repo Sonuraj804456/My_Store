@@ -3,11 +3,6 @@ Prerequisites:
 Docker
 Docker Compose
 
-Steps:
-Create environment file:
-cp .env.example .env
-
-
 Start all services (frontend, backend, database):
 docker compose up --build
 
