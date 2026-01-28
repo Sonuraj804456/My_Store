@@ -14,7 +14,7 @@ RUN pnpm install
 # Copy source code
 COPY . .
 
-EXPOSE 3000
+EXPOSE 4000
 
 # Run in dev mode
 CMD ["pnpm", "run", "dev"]

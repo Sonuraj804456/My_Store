@@ -1,5 +1,4 @@
 
-
 services:
   db:
     image: postgres:16-alpine
@@ -24,7 +23,7 @@ services:
     depends_on:
       - db
     ports:
-      - "3000:3000"
+      - "4000:4000"
 
   frontend:
     build: ./frontend
@@ -35,7 +34,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "3001:3000"   # ✅ IMPORTANT FIX
+      - "3000:3000"   
 
 volumes:
   postgres_data:
