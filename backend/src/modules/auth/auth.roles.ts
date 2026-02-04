@@ -1,5 +1,1 @@
-export enum Roles {
-  ADMIN = "ADMIN",
-  CREATOR = "CREATOR",
-  BUYER = "BUYER"
-}
+export { Roles, type Role } from "../types/roles";

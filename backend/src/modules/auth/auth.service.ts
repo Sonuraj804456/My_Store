@@ -1,6 +1,7 @@
 import { db } from "../../config/db";
 import { user } from "./auth.schema";
 import { Pool } from "pg";
+import { eq } from "drizzle-orm";
 
 let pool: Pool | null = null;
 
@@ -26,5 +27,9 @@ export const userService = {
     const client = getPool();
     const result = await client.query("SELECT * FROM \"user\" WHERE email = $1 LIMIT 1", [email]);
     return result.rows[0];
+  },
+
+  async setRoleByEmail(email: string, role: 'ADMIN' | 'CREATOR' | 'BUYER') {
+    return await db.update(user).set({ role }).where(eq(user.email, email));
   },
 };

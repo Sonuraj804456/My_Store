@@ -2,9 +2,9 @@ import type { Config } from "drizzle-kit";
 
 export default {
   dialect: "postgresql",
-  schema: "./src/modules/auth/auth.schema.ts",
+  schema: "./src/modules/**/**.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: process.env.DATABASE_URL!
-  }
+    url: process.env.DATABASE_URL!,
+  },
 } satisfies Config;

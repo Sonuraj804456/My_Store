@@ -4,6 +4,7 @@ import userRoutes from "./modules/users/user.routes";
 import { errorHandler } from "./modules/shared/error-handler";
 
 import express, { type Express } from "express";
+import storeRoutes from "./modules/stores/store.routes";
 
 const app: Express = express();
 
@@ -18,6 +19,7 @@ app.use(
 // API prefix
 app.use("/v1/api/auth", authRoutes);
 app.use("/v1/api/users", userRoutes);
+app.use("/v1/api/stores", storeRoutes);
 
 app.use(errorHandler);
 

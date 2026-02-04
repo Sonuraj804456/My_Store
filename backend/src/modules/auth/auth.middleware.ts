@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { db } from "../../config/db";
 import { session } from "./auth.schema";
-import { eq, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { Roles } from "./auth.roles";
 
 export async function requireAuth(
   req: Request,
@@ -25,6 +26,12 @@ export async function requireAuth(
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 
-  (req as any).user = sessionRecord.user;
+  // 🔑 IMPORTANT: attach ONLY what the app needs
+  req.user = {
+    id: sessionRecord.user.id,       // must match stores.userId
+    role: sessionRecord.user.role as Roles,
+    email: sessionRecord.user.email,
+  };
+
   next();
 }
