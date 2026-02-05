@@ -1,7 +1,7 @@
-import { Roles, type Role } from "./auth.roles";
 import { Request, Response, NextFunction } from "express";
+import { Roles } from "../types/roles";
 
-export function requireRole(role: Roles | Role) {
+export function requireRole(role: Roles | Roles) {
   return function (req: Request, res: Response, next: NextFunction) {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
 

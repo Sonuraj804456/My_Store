@@ -2,7 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { db } from "../../config/db";
 import { session } from "./auth.schema";
 import { eq } from "drizzle-orm";
-import { Roles } from "./auth.roles";
+import { Roles } from "../types/roles";
+
 
 export async function requireAuth(
   req: Request,
