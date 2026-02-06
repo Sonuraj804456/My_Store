@@ -36,6 +36,13 @@
       "when": 1768988762644,
       "tag": "0004_charming_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770363599305,
+      "tag": "0005_broad_monster_badoon",
+      "breakpoints": true
     }
   ]
 }
