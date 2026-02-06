@@ -1,12 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Request, Response, NextFunction } from "express";
-import { requireAuth } from "../src/modules/auth/auth.middleware";
+
+let requireAuth: any;
 
 // ---- MOCK EXTERNALS ----
 vi.mock("../src/modules/auth/auth.core", () => ({
   auth: {
     api: {
-      getSession: vi.fn().mockResolvedValue(null),
+      getSession: vi.fn(),
     },
   },
 }));
@@ -15,38 +16,50 @@ vi.mock("../src/config/db", () => ({
   db: {
     query: {
       session: {
-        findFirst: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn(),
       },
     },
   },
 }));
 
-// ---- MOCK UTILS ----
-function mockReq(data?: Partial<Request>): Request {
+let auth: any;
+let db: any;
+
+// ---- HELPERS ----
+function mockReq(headers: Record<string, string> = {}): Request {
   return {
-    headers: {},
-    ...data,
-  } as Request;
+    headers,
+    get: (name: string) => headers[name.toLowerCase()],
+  } as unknown as Request;
 }
 
-function mockRes(): Response & {
-  status: ReturnType<typeof vi.fn>;
-  json: ReturnType<typeof vi.fn>;
-} {
+function mockRes(): Response {
   return {
     status: vi.fn().mockReturnThis(),
     json: vi.fn(),
-  } as any;
+  } as unknown as Response;
 }
 
 function mockNext(): NextFunction {
   return vi.fn();
 }
 
+beforeEach(async () => {
+  vi.clearAllMocks();
+  const mod = await import("../src/modules/auth/auth.core");
+  auth = (mod as any).auth;
+  const modDb = await import("../src/config/db");
+  db = (modDb as any).db;
+  const modReq = await import("../src/modules/auth/auth.middleware");
+  requireAuth = (modReq as any).requireAuth;
+});
+
 // ---- TESTS ----
 describe("Auth middleware", () => {
-  it("should block unauthorized requests", async () => {
-    const req = mockReq(); // no user, no headers
+  it("blocks unauthorized requests", async () => {
+    (auth.api.getSession as any).mockResolvedValue(null);
+
+    const req = mockReq();
     const res = mockRes();
     const next = mockNext();
 
@@ -57,13 +70,10 @@ describe("Auth middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("should allow requests when BetterAuth returns a user", async () => {
-    // Override mock for this test only
-    const { auth } = await import("../src/modules/auth/auth.core");
-    (auth.api.getSession as any) = vi.fn().mockResolvedValue({
-  user: { id: "1", email: "test@example.com", role: "CREATOR" },
-});
-
+  it("allows requests when BetterAuth returns a user", async () => {
+    (auth.api.getSession as any).mockResolvedValue({
+      user: { id: "1", email: "test@example.com", role: "CREATOR" },
+    });
 
     const req = mockReq();
     const res = mockRes();
@@ -72,24 +82,23 @@ describe("Auth middleware", () => {
     await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("should allow requests with valid Bearer token", async () => {
-    const req = mockReq({
-      headers: { authorization: "Bearer VALID" },
-    });
+  it("allows requests with valid Bearer token", async () => {
+    (auth.api.getSession as any).mockResolvedValue(null);
 
-    // Override DB mock
-    const { db } = await import("../src/config/db");
-    db.query.session.findFirst = vi.fn().mockResolvedValue({
+    (db.query.session.findFirst as any).mockResolvedValue({
       user: { id: "123", email: "buyer@example.com", role: "BUYER" },
     });
 
+    const req = mockReq({ authorization: "Bearer VALID" });
     const res = mockRes();
     const next = mockNext();
 
     await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

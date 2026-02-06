@@ -2,12 +2,13 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
-  
   "scripts": {
-  "dev": "ts-node-dev --files --project tsconfig.json src/server.ts",
-  "build": "tsc",
-  "db:migrate": "drizzle-kit migrate"
-},
+    "dev": "ts-node-dev --files --project tsconfig.json src/server.ts",
+    "build": "tsc",
+    "db:migrate": "drizzle-kit migrate",
+    "test": "vitest run",
+    "test:ui": "vitest --ui"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

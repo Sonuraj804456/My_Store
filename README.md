@@ -15,6 +15,14 @@ docker compose exec backend pnpm run db:migrate
 
 This will create all required tables in PostgreSQL using Drizzle.
 
+Note: `db:migrate` runs the Drizzle migration push (drizzle-kit). You can also run the underlying command directly:
+
+```
+cd backend
+pnpm exec drizzle-kit push
+```
+This applies any new migrations (including DB-level constraints).
+
 📌 Common Commands
 # Start all services
 docker compose up
@@ -56,6 +64,11 @@ Created
 Updated
 Store metadata (name, description, visibility, etc.) can be updated by the owner
 Username cannot be updated after creation
+
+Notes on validation and DB rules:
+
+- `name`: When provided during updates, `name` must be a non-empty string (min 1, max 80). The database also enforces a CHECK constraint preventing empty `name` values.
+- Unique collisions (for example duplicate `username` or duplicate `user_id`) are handled consistently: the service maps DB unique-constraint violations to `409 Conflict` responses (`ApiError(409, ...)`) so collisions do not appear as generic 500 errors.
 
 Soft Deleted
 Store is soft-deleted by the owner or an admin
@@ -120,3 +133,6 @@ Inspect ownership and status
 Admin endpoints are protected by:
 requireAuth
 requireRole(ADMIN)
+
+Implementation notes:
+- `requireAuth` middleware accepts bearer tokens and will also attempt to resolve a BetterAuth session (cookie-based) when no `Authorization` header is present. This allows cookie/session flows alongside token auth.

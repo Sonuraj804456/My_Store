@@ -17,32 +17,6 @@ import { validateBody } from "../shared/validate-body";
 const router: Router = Router();
 
 /* ======================================
-   ADMIN ROUTES
-====================================== */
-
-
-router.get(
-  "/admin",
-  requireAuth,
-  requireRole(Roles.ADMIN),
-  controller.adminListStores
-);
-
-router.get(
-  "/admin/:id",
-  requireAuth,
-  requireRole(Roles.ADMIN),
-  controller.adminGetStoreById
-);
-
-router.patch(
-  "/admin/:id/restore",
-  requireAuth,
-  requireRole(Roles.ADMIN),
-  controller.adminRestoreStore
-);
-
-/* ======================================
    CREATOR ROUTES
 ====================================== */
 

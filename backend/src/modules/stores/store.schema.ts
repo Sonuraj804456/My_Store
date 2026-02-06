@@ -17,16 +17,19 @@ export const createStoreSchema = z.object({
   description: z
     .string()
     .max(500)
+    .nullable()
     .optional(),
 
   avatarUrl: z
     .string()
     .url()
+    .nullable()
     .optional(),
 
   bannerUrl: z
     .string()
     .url()
+    .nullable()
     .optional(),
 
 });
@@ -34,6 +37,7 @@ export const createStoreSchema = z.object({
 export const updateStoreSchema = z.object({
   name: z
     .string()
+    .min(1)
     .max(80)
     .optional(),
 
@@ -63,6 +67,7 @@ export const updateStoreSchema = z.object({
   announcementText: z
     .string()
     .max(200)
+    .nullable()
     .optional(),
 
   announcementEnabled: z

@@ -29,15 +29,33 @@ export async function createStore(
     throw new ApiError(409, "Username already taken");
   }
 
-  const [store] = await db
-    .insert(stores)
-    .values({
-      userId,
-      ...data,
-    })
-    .returning();
+  try {
+    const [store] = await db
+      .insert(stores)
+      .values({
+        userId,
+        ...data,
+      })
+      .returning();
 
-  return store;
+    return store;
+  } catch (err: any) {
+    // Postgres unique violation
+    // err.code === '23505' is the Postgres unique_violation code
+    const constraint = err.constraint || "";
+    if (err && (err.code === "23505" || /unique/i.test(err.message || ""))) {
+      if (constraint.includes("username") || (err.detail && err.detail.includes("username"))) {
+        throw new ApiError(409, "Username already taken");
+      }
+      if (constraint.includes("user_id") || (err.detail && err.detail.includes("user_id"))) {
+        throw new ApiError(409, "User already owns a store");
+      }
+      // Generic unique violation fallback
+      throw new ApiError(409, "Unique constraint violation");
+    }
+
+    throw err;
+  }
 }
 
 export async function getOwnStore(userId: string) {
@@ -79,16 +97,32 @@ export async function updateOwnStore(
     throw new ApiError(404, "Store not found");
   }
 
-  const [updated] = await db
-    .update(stores)
-    .set({
-      ...updates,
-      updatedAt: new Date(),
-    })
-    .where(eq(stores.id, store.id))
-    .returning();
+  try {
+    const [updated] = await db
+      .update(stores)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(stores.id, store.id))
+      .returning();
 
-  return updated;
+    return updated;
+  } catch (err: any) {
+    const constraint = err.constraint || "";
+    if (err && (err.code === "23505" || /unique/i.test(err.message || ""))) {
+      if (constraint.includes("username") || (err.detail && err.detail.includes("username"))) {
+        throw new ApiError(409, "Username already taken");
+      }
+      if (constraint.includes("user_id") || (err.detail && err.detail.includes("user_id"))) {
+        throw new ApiError(409, "User already owns a store");
+      }
+      throw new ApiError(409, "Unique constraint violation");
+    }
+
+    throw err;
+  }
+
 }
 
 export async function softDeleteStore(userId: string) {

@@ -5,6 +5,8 @@ import { errorHandler } from "./modules/shared/error-handler";
 
 import express, { type Express } from "express";
 import storeRoutes from "./modules/stores/store.routes";
+import adminStoreRoutes from "./modules/stores/store.admin.routes";
+
 
 const app: Express = express();
 
@@ -20,6 +22,8 @@ app.use(
 app.use("/v1/api/auth", authRoutes);
 app.use("/v1/api/users", userRoutes);
 app.use("/v1/api/stores", storeRoutes);
+app.use("/v1/api/admin", adminStoreRoutes);
+
 
 app.use(errorHandler);
 

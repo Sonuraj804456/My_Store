@@ -10,11 +10,33 @@ export async function requireAuth(
   res: Response,
   next: NextFunction
 ) {
-  const authHeader = req.get("authorization");
+  const authHeader =
+  typeof req.get === "function"
+    ? req.get("authorization")
+    : req.headers?.authorization;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
+    // If no Authorization header, try BetterAuth session (e.g., cookie/session)
+    if (!authHeader) {
+      try {
+        const authModule = await import("./auth.core");
+        const auth = (authModule as any).auth;
+        if (auth && auth.api && typeof auth.api.getSession === "function") {
+          const betterSession = await auth.api.getSession(req as any).catch(() => null);
+          if (betterSession && betterSession.user) {
+            req.user = {
+              id: betterSession.user.id,
+              role: betterSession.user.role as Roles,
+              email: betterSession.user.email,
+            };
+            return next();
+          }
+        }
+      } catch (e) {
+        // ignore import/mock errors and fall through to unauthorized
+      }
+
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
   const token = authHeader.replace("Bearer ", "");
 
