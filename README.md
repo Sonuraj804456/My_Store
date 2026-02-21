@@ -23,6 +23,9 @@ pnpm exec drizzle-kit push
 ```
 This applies any new migrations (including DB-level constraints).
 
+Run all backend tests:
+docker compose exec backend pnpm test
+
 📌 Common Commands
 # Start all services
 docker compose up

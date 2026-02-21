@@ -19,7 +19,7 @@ export const stores = pgTable("stores", {
 
   username: varchar("username", { length: 30 })
     .notNull()
-    .unique(), // globally unique & permanent
+    .unique(),
 
   name: varchar("name", { length: 80 })
     .notNull(),
@@ -38,6 +38,7 @@ export const stores = pgTable("stores", {
     .default(false),
 
   announcementText: varchar("announcement_text", { length: 200 }),
+
   announcementEnabled: boolean("announcement_enabled")
     .notNull()
     .default(false),
@@ -52,4 +53,3 @@ export const stores = pgTable("stores", {
 
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
-// 844cf2d6-1fcd-4085-8201-b11f112912f2
