@@ -139,3 +139,146 @@ requireRole(ADMIN)
 
 Implementation notes:
 - `requireAuth` middleware accepts bearer tokens and will also attempt to resolve a BetterAuth session (cookie-based) when no `Authorization` header is present. This allows cookie/session flows alongside token auth.
+
+PRODUCT MODULE:
+
+1️⃣ Product Lifecycle
+
+Products follow a strict lifecycle:draft → published → soft_deleted
+Draft:
+-Default state when product is created
+-Not visible in public APIs
+-Fully editable
+Published:
+-Visible publicly
+-Must satisfy all publishing validation rules
+-Cannot violate variant or media constraints
+
+Soft Deleted:
+-deleted_at timestamp is set
+-Excluded from all listings (admin & public)
+-Not physically removed from the database
+
+2️⃣ Publishing Rules
+
+A product cannot be published unless all of the following conditions are met:
+
+✅ At least one variant exists
+
+✅ At least one media item exists
+
+✅ No variant has negative inventory
+
+If validation fails, an error is thrown:
+
+ApiError(400, "At least one variant required")
+
+ApiError(400, "At least one media required")
+
+Publishing validation is enforced inside the updateProduct() service method.
+
+3️⃣ Variant Logic
+
+Each product:
+
+Must have at least 1 variant before publishing
+
+Can have multiple variants
+
+Variants belong to a specific product
+
+Variant Fields
+
+name
+
+price
+
+inventory
+
+Rules
+
+Price is stored as decimal
+
+Inventory cannot be negative
+
+Variants are store-scoped
+
+Variants are excluded if product is soft deleted
+
+4️⃣ Category Logic
+
+Categories are:
+
+Scoped per store
+
+Unique per store
+
+Constraint
+
+Two categories with the same name cannot exist in the same store.
+
+If violated:
+
+ApiError(409, "Category already exists in this store")
+5️⃣ Media Constraints
+
+Each product:
+
+Must have at least 1 media item before publishing
+
+Can have a maximum of 10 media items
+
+Media Fields
+
+url
+
+type (required, NOT NULL)
+
+position (used for ordering)
+
+Rules
+
+type is mandatory
+
+Publishing fails if no media exists
+
+Media count is capped at 10
+
+6️⃣ Public Filtering Behavior
+
+Public APIs:
+
+Return only products with status = "published"
+
+Exclude soft deleted products
+
+Filter by store username
+
+Never return draft products
+
+Visibility Matrix
+Product State	Publicly Visible
+draft	❌ No
+published	✅ Yes
+soft_deleted	❌ No
+7️⃣ Testing Coverage (Mandatory)
+
+Unit tests implemented for:
+
+✅ Product creation
+
+✅ Variant creation
+
+✅ Publishing validation rules
+
+✅ Category uniqueness per store
+
+✅ Public visibility filtering
+
+✅ Soft delete behavior
+
+Run tests using:
+
+docker compose exec backend pnpm test
+
+All mandatory product module tests pass successfully.
