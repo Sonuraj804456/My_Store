@@ -7,7 +7,7 @@ import storeRoutes from "./modules/stores/store.routes";
 import adminStoreRoutes from "./modules/stores/store.admin.routes";
 import productRoutes from "./modules/products/product.routes";
 import productPublicRoutes from "./modules/products/product.public.routes";
-
+import orderRoutes from "./modules/orders/order.routes"; // 👈 ADD
 
 import { errorHandler } from "./modules/shared/error-handler";
 
@@ -29,9 +29,10 @@ app.use(
 app.use("/v1/api/auth", authRoutes);
 app.use("/v1/api/users", userRoutes);
 app.use("/v1/api/stores", storeRoutes);
-app.use("/v1/api/products", productRoutes); // existing product routes
+app.use("/v1/api/products", productRoutes);
 app.use("/v1/api", productPublicRoutes);
-app.use("/v1/api/admin", adminStoreRoutes); // existing admin store routes
+app.use("/v1/api", orderRoutes); // 👈 ADD THIS
+app.use("/v1/api/admin", adminStoreRoutes);
 
 /* =========================
    ERROR HANDLER

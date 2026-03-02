@@ -48,5 +48,5 @@
   "include": [
     "src/**/*.ts",
     "src/types/**/*.d.ts"
-  ],
+, "tests/order.test.ts"  ],
 }
