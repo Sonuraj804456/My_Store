@@ -10,6 +10,15 @@ const router: Router = Router();
 
 router.post("/orders", orderController.create);
 
+/* ================= BUYER ================= */
+
+router.get(
+  "/my-orders",
+  requireAuth,
+  requireRole(Roles.BUYER),
+  orderController.listForBuyer
+);
+
 /* ================= CREATOR ================= */
 
 router.get(

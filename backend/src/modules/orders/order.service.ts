@@ -3,6 +3,7 @@ import { orderDb, OrderStatus } from "./order.db";
 import { db } from "../../config/db";
 import { products, productVariants } from "../products/product.db";
 import { stores } from "../stores/store.db";
+import { downloadService } from "../download/download.service";
 import { eq, and, isNull } from "drizzle-orm";
 
 /* ================= LIFECYCLE ================= */
@@ -31,6 +32,25 @@ function validateTransition(
     );
   }
 }
+
+const handleStatusChangeToPaid = async (orderId: string) => {
+  const order = await orderDb.findById(orderId);
+  if (!order) return;
+
+  const product = await db.query.products.findFirst({
+    where: and(eq(products.id, order.productId), isNull(products.deletedAt)),
+  });
+
+  if (!product) return;
+
+  if (product.productType === "DIGITAL") {
+    await downloadService.createDigitalDownload(
+      order.id,
+      order.productId,
+      order.variantId
+    );
+  }
+};
 
 /* ================= SERVICE ================= */
 
@@ -143,6 +163,31 @@ export const orderService = {
   return orderDb.listByStore(store.id);
 },
 
+  async listOrdersForBuyer(userId: string) {
+    const orders = await orderDb.listByBuyer(userId);
+
+    // For each order, if it's paid and digital product, include download token
+    const ordersWithDownloads = await Promise.all(
+      orders.map(async (order) => {
+        const product = await db.query.products.findFirst({
+          where: and(eq(products.id, order.productId), isNull(products.deletedAt)),
+        });
+
+        let download = null;
+        if (order.status === "PAID" && product?.productType === "DIGITAL") {
+          download = await downloadService.findByOrderId(order.id);
+        }
+
+        return {
+          ...order,
+          download: download ? { token: download.token } : null,
+        };
+      })
+    );
+
+    return ordersWithDownloads;
+  },
+
   async listAllOrders() {
     return orderDb.listAll();
   },
@@ -175,7 +220,12 @@ export const orderService = {
   validateTransition(order.status as OrderStatus, status);
 
   await orderDb.updateStatus(orderId, status);
+
+  if (status === "PAID") {
+    await handleStatusChangeToPaid(orderId);
+  }
 },
+
 
   async updateStatusAdmin(
     orderId: string,
@@ -188,6 +238,10 @@ export const orderService = {
     }
 
     await orderDb.updateStatus(orderId, status);
+
+    if (status === "PAID") {
+      await handleStatusChangeToPaid(orderId);
+    }
   },
 
   /* ================= REFUND ================= */

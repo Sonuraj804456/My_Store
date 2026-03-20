@@ -246,6 +246,54 @@ Media count is capped at 10
 
 6️⃣ Public Filtering Behavior
 
+
+🏁 Digital vs Physical Behavior
+
+- Physical products are shipped and are typically tracked purely via order status and potentially fulfillment flows.
+- Digital products use `digital_downloads` and require a download token to retrieve the file URL.
+- Download links are exposed via `GET /v1/api/download/download/:token` (public access to token-protected resource) and require an associated validated paid order.
+- Digital standard: product must have media items of type `file` in `product_media` and the first candidate is returned as `url`.
+
+🔐 Token Validation Logic
+
+- A token is generated in `download.service.ts` with `crypto.randomBytes(32).toString("hex")` (64-character hex string).
+- `resolveToken(token, ip, userAgent)` checks:
+  - token exists in `digital_downloads`
+  - order exists, is not cancelled, and status is `PAID`
+  - expiry (`expiresAt`) is not passed (if set)
+  - downloadCount < maxDownloads (if maxDownloads is set)
+  - product has file media attached
+- `download_count` is incremented and access is logged to `download_logs` on each successful resolve.
+
+⏳ Download Lifecycle (Digital)
+
+1. Order created (e.g., from buyer purchase)
+2. `downloadService.createDigitalDownload(orderId, productId, variantId)` creates `digital_downloads` row with token, `downloadCount`=0, optional limits
+3. Buyer or creator introspects token with `GET /v1/api/download/token/:orderId` (auth required)
+4. Client performs public file retrieval using `GET /v1/api/download/download/:token`
+5. `resolveToken` applies checks and returns `url`
+6. Download count increments and logs are written
+
+🛡️ Security Decisions
+
+- Access to download token introspection is scoped:
+  - Buyer can only introspect own paid order
+  - Creator can introspect only if the order's product belongs to their store
+  - Admin can introspect all
+- `publicDownload` endpoint is token-based (no role required), but token must match a valid paid order and product file media.
+- Token leaks are minimized by:
+  - short-lived expiration support (`expiresAt`)
+  - download count limits (`maxDownloads`)
+  - requiring order status checks and cancellation handling
+- IP and user agent are recorded for audit and tracking in `download_logs`.
+
+🔒 Token Hashing (current implementation)
+
+- The implementation currently stores raw tokens in `digital_downloads.token` and validates directly.
+- Token hashing is not implemented yet; if security hardening is needed, switch to storing `SHA256(token)` and compare hashed values when resolving.
+- When hashing is added, preserve `token` privacy (prevents database plaintext token leaks) while keeping the same validation flow.
+
+
 Public APIs:
 
 Return only products with status = "published"

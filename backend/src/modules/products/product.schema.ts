@@ -14,6 +14,10 @@ export const createProductSchema = z.object({
     .nullable(),
 
   isFeatured: z.boolean().optional(),
+
+  productType: z
+    .enum(["PHYSICAL", "DIGITAL"])
+    .optional(),
 });
 
 export const updateProductSchema = z.object({
@@ -29,6 +33,10 @@ export const updateProductSchema = z.object({
 
   status: z
     .enum(["draft", "published", "archived"])
+    .optional(),
+
+  productType: z
+    .enum(["PHYSICAL", "DIGITAL"])
     .optional(),
 });
 

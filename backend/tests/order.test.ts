@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "../src/config/db";
 import { orderDb } from "../src/modules/orders/order.db";
 import { orderService } from "../src/modules/orders/order.service";
+import { downloadService } from "../src/modules/download/download.service";
 import { ApiError } from "../src/modules/shared/api-error";
 
 
@@ -32,6 +33,14 @@ vi.mock("../src/modules/orders/order.db", () => ({
   },
 }));
 
+vi.mock("../src/modules/download/download.service", () => ({
+  downloadService: {
+    createDigitalDownload: vi.fn(),
+    listByProduct: vi.fn(),
+    listAll: vi.fn(),
+    resolveToken: vi.fn(),
+  },
+}));
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -116,7 +125,7 @@ describe("Order Creation", () => {
 ========================================================= */
 
 describe("Lifecycle Transition Validation", () => {
-  it("should allow valid transition", async () => {
+  it("should allow valid transition and create digital download on PAID if digital", async () => {
     (db.query.stores.findFirst as any).mockResolvedValue({
       id: "s1",
     });
@@ -125,6 +134,14 @@ describe("Lifecycle Transition Validation", () => {
       id: "o1",
       status: "PENDING",
       storeId: "s1",
+      productId: "p1",
+      variantId: "v1",
+    });
+
+    (db.query.products.findFirst as any).mockResolvedValue({
+      id: "p1",
+      productType: "DIGITAL",
+      deletedAt: null,
     });
 
     await orderService.updateStatusCreator(
@@ -133,9 +150,11 @@ describe("Lifecycle Transition Validation", () => {
       "user1"
     );
 
-    expect(orderDb.updateStatus).toHaveBeenCalledWith(
+    expect(orderDb.updateStatus).toHaveBeenCalledWith("o1", "PAID");
+    expect(downloadService.createDigitalDownload).toHaveBeenCalledWith(
       "o1",
-      "PAID"
+      "p1",
+      "v1"
     );
   });
 

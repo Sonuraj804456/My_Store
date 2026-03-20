@@ -19,6 +19,14 @@ export const orderController = {
     res.json({ success: true, data: orders, error: null });
   },
 
+  listForBuyer: async (req: any, res: any) => {
+    const orders = await orderService.listOrdersForBuyer(
+      req.user.id
+    );
+
+    res.json({ success: true, data: orders, error: null });
+  },
+
   listAll: async (_req: any, res: any) => {
     const orders = await orderService.listAllOrders();
     res.json({ success: true, data: orders, error: null });

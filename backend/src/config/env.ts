@@ -20,7 +20,10 @@ if (!parsed.success) {
 export const env = parsed.success
   ? parsed.data
   : {
-      DATABASE_URL: "postgres://test",
+      DATABASE_URL:
+        process.env.NODE_ENV === "test"
+          ? "postgres://postgres:postgres@127.0.0.1:5432/my_store_test"
+          : "postgres://postgres:postgres@127.0.0.1:5432/my_store",
       BETTERAUTH_SECRET: "test",
       PORT: 3000,
       NODE_ENV: "test" as const,

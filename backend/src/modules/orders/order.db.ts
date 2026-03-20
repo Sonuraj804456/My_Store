@@ -88,6 +88,11 @@ export const orderDb = {
       where: and(eq(orders.storeId, storeId), isNull(orders.deletedAt)),
     }),
 
+  listByBuyer: (buyerId: string) =>
+    db.query.orders.findMany({
+      where: and(eq(orders.buyerId, buyerId), isNull(orders.deletedAt)),
+    }),
+
   listAll: () =>
     db.query.orders.findMany({
       where: isNull(orders.deletedAt),

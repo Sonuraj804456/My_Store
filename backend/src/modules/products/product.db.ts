@@ -22,7 +22,9 @@ export const productStatusEnum = pgEnum("product_status", [
   "archived",
 ]);
 
-export const mediaTypeEnum = pgEnum("media_type", ["image", "video"]);
+export const productTypeEnum = pgEnum("product_type", ["PHYSICAL", "DIGITAL"]);
+
+export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "file"]);
 
 /* ================= PRODUCTS ================= */
 
@@ -34,6 +36,8 @@ export const products = pgTable(
     storeId: uuid("store_id")
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
+
+    productType: productTypeEnum("product_type").notNull().default("PHYSICAL"),
 
     title: varchar("title", { length: 120 }).notNull(),
 

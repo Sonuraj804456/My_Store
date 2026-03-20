@@ -67,6 +67,7 @@ export const createProduct = async (
     title: string;
     description?: string;
     isFeatured?: boolean;
+    productType?: "PHYSICAL" | "DIGITAL";
     categoryIds?: string[];
   }
 ) => {
@@ -77,6 +78,7 @@ export const createProduct = async (
         title: data.title,
         description: data.description ?? null,
         isFeatured: data.isFeatured ?? false,
+        productType: data.productType ?? "PHYSICAL",
         storeId: storeId, // ✅ direct
         status: "draft",
       })
@@ -148,6 +150,22 @@ const validatePublishing = async (productId: string) => {
 
   if (variants.some((v) => v.inventory < 0))
     throw new ApiError(400, "Inventory cannot be negative");
+
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, productId),
+  });
+
+  if (!product) throw new ApiError(404, "Product not found");
+
+  const hasFileMedia = media.some((m) => m.type === "file");
+
+  if (product.productType === "DIGITAL" && !hasFileMedia) {
+    throw new ApiError(400, "Digital products require at least one file media");
+  }
+
+  if (product.productType === "PHYSICAL" && hasFileMedia) {
+    throw new ApiError(400, "Physical products cannot have file media");
+  }
 };
 
 export const updateProduct = async (
@@ -257,7 +275,11 @@ export const addMedia = async (
   productId: string,
   data: any
 ) => {
-  await getSingleProduct(storeId, productId);
+  const product = await getSingleProduct(storeId, productId);
+
+  if (product.productType === "PHYSICAL" && data.type === "file") {
+    throw new ApiError(400, "Physical products cannot attach file media");
+  }
 
   const existing = await db
     .select()
