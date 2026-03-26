@@ -2,6 +2,7 @@ import "dotenv/config";
 import app from "./app";
 import { userService } from "./modules/auth/auth.service";
 import { auth } from "./modules/auth/auth.core";
+import { startJobRunner } from "./modules/jobs/job-runner";
 
 async function seedAdmin() {
   const email = process.env.ADMIN_EMAIL;
@@ -53,4 +54,5 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   await seedAdmin();
+  await startJobRunner();
 });

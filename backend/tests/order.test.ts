@@ -23,6 +23,7 @@ vi.mock("../src/config/db", () => ({
 vi.mock("../src/modules/orders/order.db", () => ({
   orderDb: {
     findBuyer: vi.fn(),
+    findBuyerById: vi.fn(),
     createBuyer: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
@@ -53,6 +54,20 @@ vi.mock("../src/modules/payout/payout.service", () => ({
     getPayoutsForCreator: vi.fn(),
     getPayoutSummaryForCreator: vi.fn(),
     listAll: vi.fn(),
+  },
+}));
+
+vi.mock("../src/modules/jobs/job.db", () => ({
+  jobDb: {
+    create: vi.fn(),
+    findById: vi.fn(),
+    findPendingJobs: vi.fn(),
+    findDueJobs: vi.fn(),
+    update: vi.fn(),
+    updateStatus: vi.fn(),
+    incrementAttempts: vi.fn(),
+    listAll: vi.fn(),
+    listByStatus: vi.fn(),
   },
 }));
 
@@ -202,6 +217,12 @@ describe("Lifecycle Transition Validation", () => {
       status: "SHIPPED",
       storeId: "s1",
       totalAmount: 200,
+      buyerId: "buyer1",
+    });
+
+    (orderDb.findBuyerById as any).mockResolvedValue({
+      id: "buyer1",
+      email: "buyer@example.com",
     });
 
     await orderService.updateStatusCreator(
@@ -251,6 +272,12 @@ describe("Admin Override", () => {
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
       status: "PENDING",
+      buyerId: "buyer1",
+    });
+
+    (orderDb.findBuyerById as any).mockResolvedValue({
+      id: "buyer1",
+      email: "buyer@example.com",
     });
 
     await orderService.updateStatusAdmin(

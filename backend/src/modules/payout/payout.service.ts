@@ -1,8 +1,10 @@
 import { ApiError } from "../shared/api-error";
 import { payoutDb, payouts } from "./payout.db";
+import { jobDb } from "../jobs/job.db";
 import { env } from "../../config/env";
 import { db } from "../../config/db";
 import { orders } from "../orders/order.db";
+import { stores } from "../stores/store.db";
 import { eq } from "drizzle-orm";
 
 const COMMISSION_PERCENT = Number(env.PLATFORM_COMMISSION_PERCENT ?? 10);
@@ -63,6 +65,15 @@ export const payoutService = {
     const existing = await payoutDb.findByOrderId(order.id);
     if (existing) return existing;
 
+    // Fetch the store to get the creator's userId
+    const store = await db.query.stores.findFirst({
+      where: eq(stores.id, order.storeId),
+    });
+
+    if (!store) {
+      throw new ApiError(404, "Store not found");
+    }
+
     const grossAmount = Number(order.totalAmount);
     if (isNaN(grossAmount) || grossAmount < 0) {
       throw new ApiError(400, "Invalid order total amount");
@@ -73,7 +84,7 @@ export const payoutService = {
 
     const created = await payoutDb.create({
       storeId: order.storeId,
-      creatorId: order.storeId || "",
+      creatorId: store.userId,
       orderId: order.id,
       grossAmount,
       commissionAmount: commission,
@@ -82,7 +93,27 @@ export const payoutService = {
       eligibleAt,
     });
 
-    return created[0];
+    const payout = created[0];
+    if (!payout) {
+      throw new ApiError(500, "Failed to create payout record");
+    }
+
+    // Create PAYOUT_ELIGIBILITY job to transition from LOCKED -> ELIGIBLE
+    try {
+      await jobDb.create({
+        type: "PAYOUT_ELIGIBILITY",
+        payload: {
+          payoutId: payout.id,
+        },
+        status: "PENDING",
+        runAt: eligibleAt, // Schedule for when payout becomes eligible
+      });
+    } catch (error) {
+      console.error("Failed to create payout eligibility job:", error);
+      // Don't fail payout creation if job creation fails
+    }
+
+    return payout;
   },
 
   async getPayoutsForCreator(userId: string, filters: any = {}) {

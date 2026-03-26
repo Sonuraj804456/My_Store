@@ -1,6 +1,7 @@
 import { ApiError } from "../shared/api-error";
 import { orderDb, OrderStatus } from "./order.db";
 import { payoutService } from "../payout/payout.service";
+import { jobDb } from "../jobs/job.db";
 import { db } from "../../config/db";
 import { products, productVariants } from "../products/product.db";
 import { stores } from "../stores/store.db";
@@ -56,6 +57,29 @@ const handleStatusChangeToPaid = async (orderId: string) => {
 const handleStatusChangeToDelivered = async (order: any) => {
   if (!order) return;
   await payoutService.createPayoutForOrder(order);
+
+  // Create EMAIL job to notify buyer
+  try {
+    const buyer = await orderDb.findBuyerById(order.buyerId);
+    if (buyer) {
+      await jobDb.create({
+        type: "EMAIL",
+        payload: {
+          to: buyer.email,
+          template: "ORDER_STATUS_UPDATED",
+          data: {
+            orderId: order.id,
+            status: "DELIVERED",
+            updatedAt: new Date(),
+          },
+        },
+        status: "PENDING",
+        runAt: new Date(),
+      });
+    }
+  } catch (error) {
+    console.error("Failed to create status update email job:", error);
+  }
 };
 
 const handleStatusChangeToCancelledOrReturned = async (order: any) => {
@@ -152,6 +176,28 @@ export const orderService = {
     }
 
     const order = createdOrder[0]!;
+
+    // Create EMAIL job to notify buyer
+    try {
+      await jobDb.create({
+        type: "EMAIL",
+        payload: {
+          to: data.buyerEmail,
+          template: "ORDER_CREATED",
+          data: {
+            orderId: order.id,
+            totalAmount: order.totalAmount,
+            status: order.status,
+            productName: data.productName || "Your Order",
+          },
+        },
+        status: "PENDING",
+        runAt: new Date(),
+      });
+    } catch (error) {
+      console.error("Failed to create email job:", error);
+      // Don't fail the order creation if job creation fails
+    }
 
     return {
       orderId: order.id,

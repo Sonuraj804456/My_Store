@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { payoutService } from "../src/modules/payout/payout.service";
 import { payoutDb } from "../src/modules/payout/payout.db";
 import { ApiError } from "../src/modules/shared/api-error";
+import { db } from "../src/config/db";
 
 vi.mock("../src/modules/payout/payout.db", () => ({
   payoutDb: {
@@ -14,6 +15,30 @@ vi.mock("../src/modules/payout/payout.db", () => ({
   },
 }));
 
+vi.mock("../src/config/db", () => ({
+  db: {
+    query: {
+      stores: {
+        findFirst: vi.fn(),
+      },
+    },
+  },
+}));
+
+vi.mock("../src/modules/jobs/job.db", () => ({
+  jobDb: {
+    create: vi.fn(),
+    findById: vi.fn(),
+    findPendingJobs: vi.fn(),
+    findDueJobs: vi.fn(),
+    update: vi.fn(),
+    updateStatus: vi.fn(),
+    incrementAttempts: vi.fn(),
+    listAll: vi.fn(),
+    listByStatus: vi.fn(),
+  },
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -22,6 +47,7 @@ describe("Payout Service", () => {
   it("should create payout on delivered order", async () => {
     const order = { id: "o1", totalAmount: 100, storeId: "s1" };
 
+    (db.query.stores.findFirst as any).mockResolvedValue({ id: "s1", userId: "u1" });
     (payoutDb.findByOrderId as any).mockResolvedValue(null);
     (payoutDb.create as any).mockResolvedValue([
       {
@@ -42,6 +68,7 @@ describe("Payout Service", () => {
 
   it("should reject creating duplicate payout", async () => {
     const order = { id: "o1", totalAmount: 100, storeId: "s1" };
+    (db.query.stores.findFirst as any).mockResolvedValue({ id: "s1", userId: "u1" });
     (payoutDb.findByOrderId as any).mockResolvedValue({ id: "p1" });
 
     const result = await payoutService.createPayoutForOrder(order);

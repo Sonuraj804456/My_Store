@@ -109,6 +109,11 @@ export const orderDb = {
       where: and(eq(buyers.email, email), eq(buyers.phone, phone)),
     }),
 
+  findBuyerById: (id: string) =>
+    db.query.buyers.findFirst({
+      where: eq(buyers.id, id),
+    }),
+
   createBuyer: (data: any) =>
     db.insert(buyers).values(data).returning(),
 };
