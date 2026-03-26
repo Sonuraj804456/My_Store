@@ -4,7 +4,9 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   BETTERAUTH_SECRET: z.string().min(1),
   PORT: z.string().transform(Number),
-  NODE_ENV: z.enum(["development", "production", "test"])
+  NODE_ENV: z.enum(["development", "production", "test"]),
+  PLATFORM_COMMISSION_PERCENT: z.string().optional(),
+  PAYOUT_HOLD_DAYS: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -25,6 +27,8 @@ export const env = parsed.success
           ? "postgres://postgres:postgres@127.0.0.1:5432/my_store_test"
           : "postgres://postgres:postgres@127.0.0.1:5432/my_store",
       BETTERAUTH_SECRET: "test",
+      PLATFORM_COMMISSION_PERCENT: "10",
+      PAYOUT_HOLD_DAYS: "7",
       PORT: 3000,
       NODE_ENV: "test" as const,
     };

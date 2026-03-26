@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { db } from "../src/config/db";
 import { orderDb } from "../src/modules/orders/order.db";
 import { orderService } from "../src/modules/orders/order.service";
+import { payoutService } from "../src/modules/payout/payout.service";
 import { downloadService } from "../src/modules/download/download.service";
 import { ApiError } from "../src/modules/shared/api-error";
 
@@ -41,6 +42,20 @@ vi.mock("../src/modules/download/download.service", () => ({
     resolveToken: vi.fn(),
   },
 }));
+
+vi.mock("../src/modules/payout/payout.service", () => ({
+  payoutService: {
+    createPayoutForOrder: vi.fn(),
+    cancelByOrderId: vi.fn(),
+    applyRefund: vi.fn(),
+    releasePayout: vi.fn(),
+    cancelPayout: vi.fn(),
+    getPayoutsForCreator: vi.fn(),
+    getPayoutSummaryForCreator: vi.fn(),
+    listAll: vi.fn(),
+  },
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -177,7 +192,29 @@ describe("Lifecycle Transition Validation", () => {
       )
     ).rejects.toThrow(ApiError);
   });
-});
+  it("should create payout on delivered status", async () => {
+    (db.query.stores.findFirst as any).mockResolvedValue({
+      id: "s1",
+    });
+
+    (orderDb.findById as any).mockResolvedValue({
+      id: "o1",
+      status: "SHIPPED",
+      storeId: "s1",
+      totalAmount: 200,
+    });
+
+    await orderService.updateStatusCreator(
+      "o1",
+      "DELIVERED",
+      "user1"
+    );
+
+    expect(orderDb.updateStatus).toHaveBeenCalledWith("o1", "DELIVERED");
+    expect(payoutService.createPayoutForOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "o1" })
+    );
+  });});
 
 /* =========================================================
    CREATOR STORE ISOLATION

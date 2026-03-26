@@ -1,5 +1,6 @@
 import { ApiError } from "../shared/api-error";
 import { orderDb, OrderStatus } from "./order.db";
+import { payoutService } from "../payout/payout.service";
 import { db } from "../../config/db";
 import { products, productVariants } from "../products/product.db";
 import { stores } from "../stores/store.db";
@@ -50,6 +51,16 @@ const handleStatusChangeToPaid = async (orderId: string) => {
       order.variantId
     );
   }
+};
+
+const handleStatusChangeToDelivered = async (order: any) => {
+  if (!order) return;
+  await payoutService.createPayoutForOrder(order);
+};
+
+const handleStatusChangeToCancelledOrReturned = async (order: any) => {
+  if (!order) return;
+  await payoutService.cancelByOrderId(order.id);
 };
 
 /* ================= SERVICE ================= */
@@ -224,6 +235,14 @@ export const orderService = {
   if (status === "PAID") {
     await handleStatusChangeToPaid(orderId);
   }
+
+  if (status === "DELIVERED") {
+    await handleStatusChangeToDelivered(order);
+  }
+
+  if (status === "CANCELLED" || status === "RETURNED") {
+    await handleStatusChangeToCancelledOrReturned(order);
+  }
 },
 
 
@@ -241,6 +260,14 @@ export const orderService = {
 
     if (status === "PAID") {
       await handleStatusChangeToPaid(orderId);
+    }
+
+    if (status === "DELIVERED") {
+      await handleStatusChangeToDelivered(order);
+    }
+
+    if (status === "CANCELLED" || status === "RETURNED") {
+      await handleStatusChangeToCancelledOrReturned(order);
     }
   },
 
@@ -277,6 +304,8 @@ export const orderService = {
       isRefunded: true,
       refundAmount,
     });
+
+    await payoutService.applyRefund(order, refundAmount);
   },
 
   /* ================= SOFT DELETE ================= */

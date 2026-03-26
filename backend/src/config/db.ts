@@ -7,6 +7,7 @@ import * as authSchema from "../modules/auth/auth.schema";
 import * as storeSchema from "../modules/stores/store.db";
 import * as productSchema from "../modules/products/product.db";
 import * as orderSchema from "../modules/orders/order.db"; // 👈 ADD THIS
+import * as payoutSchema from "../modules/payout/payout.db";
 import * as downloadSchema from "../modules/download/download.db";
 import * as messageSchema from "../modules/messages/message.db";
 
@@ -20,6 +21,7 @@ export const db = drizzle(pool, {
     ...storeSchema,
     ...productSchema,
     ...orderSchema, // 👈 ADD THIS
+    ...payoutSchema,
     ...downloadSchema,
     ...messageSchema,
   },

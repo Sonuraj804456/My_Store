@@ -10,6 +10,7 @@ import productPublicRoutes from "./modules/products/product.public.routes";
 import orderRoutes from "./modules/orders/order.routes"; // 👈 ADD
 import messageRoutes from "./modules/messages/message.routes";
 import downloadRoutes from "./modules/download/download.routes";
+import payoutRoutes from "./modules/payout/payout.routes";
 
 import { errorHandler } from "./modules/shared/error-handler";
 
@@ -36,6 +37,7 @@ app.use("/v1/api", productPublicRoutes);
 app.use("/v1/api", orderRoutes); // 👈 ADD THIS
 app.use("/v1/api", messageRoutes);
 app.use("/v1/api", downloadRoutes);
+app.use("/v1/api", payoutRoutes);
 app.use("/v1/api/admin", adminStoreRoutes);
 
 /* =========================

@@ -8,6 +8,8 @@ describe("Env validation", () => {
       BETTERAUTH_SECRET: "secret123",
       PORT: "3000",
       NODE_ENV: "development",
+      PLATFORM_COMMISSION_PERCENT: "10",
+      PAYOUT_HOLD_DAYS: "7",
     };
 
     const result = envSchema.safeParse(mock);
