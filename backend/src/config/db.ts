@@ -8,6 +8,7 @@ import * as storeSchema from "../modules/stores/store.db";
 import * as productSchema from "../modules/products/product.db";
 import * as orderSchema from "../modules/orders/order.db"; // 👈 ADD THIS
 import * as downloadSchema from "../modules/download/download.db";
+import * as messageSchema from "../modules/messages/message.db";
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
@@ -20,5 +21,6 @@ export const db = drizzle(pool, {
     ...productSchema,
     ...orderSchema, // 👈 ADD THIS
     ...downloadSchema,
+    ...messageSchema,
   },
 });
