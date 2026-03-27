@@ -33,3 +33,15 @@ export async function adminCancelPayout(req: Request<{ id: string }>, res: Respo
   const updated = await payoutService.cancelPayout(id);
   res.json(updated);
 }
+
+export async function adminFreezePayout(req: Request<{ id: string }>, res: Response) {
+  const { id } = req.params;
+  const updated = await payoutService.freezePayout(id);
+  res.json(updated);
+}
+
+export async function adminUnfreezePayout(req: Request<{ id: string }>, res: Response) {
+  const { id } = req.params;
+  const updated = await payoutService.unfreezePayout(id);
+  res.json(updated);
+}

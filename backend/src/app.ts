@@ -1,5 +1,6 @@
 import cors from "cors";
 import express, { type Express } from "express";
+import { db } from "./config/db";
 
 import authRoutes from "./modules/auth/auth.routes";
 import userRoutes from "./modules/users/user.routes";
@@ -39,6 +40,24 @@ app.use("/v1/api", messageRoutes);
 app.use("/v1/api", downloadRoutes);
 app.use("/v1/api", payoutRoutes);
 app.use("/v1/api/admin", adminStoreRoutes);
+
+app.get("/v1/api/health", async (_req, res) => {
+  let dbStatus = "disconnected";
+
+  try {
+    await db.query.stores.findFirst();
+    dbStatus = "connected";
+  } catch {
+    dbStatus = "disconnected";
+  }
+
+  res.json({
+    status: "ok",
+    db: dbStatus,
+    jobs: "running",
+    version: "v1",
+  });
+});
 
 /* =========================
    ERROR HANDLER

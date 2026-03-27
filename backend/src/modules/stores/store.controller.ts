@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { ApiError } from "../shared/api-error";
 import * as storeService from "./store.service";
 
 export async function createStore(req: Request, res: Response) {
@@ -48,6 +49,24 @@ export async function adminGetStoreById(req: Request<{ id: string }>,
   const { id } = req.params;
 
   const store = await storeService.adminGetStoreById(id);
+  res.json(store);
+}
+
+export async function adminSuspendStore(req: Request<{ id: string }>, res: Response) {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  if (!reason || typeof reason !== "string") {
+    throw new ApiError(400, "Reason is required to suspend a store");
+  }
+
+  const store = await storeService.adminSuspendStore(id, reason, req.user?.id || "system");
+  res.json(store);
+}
+
+export async function adminUnsuspendStore(req: Request<{ id: string }>, res: Response) {
+  const { id } = req.params;
+  const store = await storeService.adminUnsuspendStore(id, req.user?.id || "system");
   res.json(store);
 }
 

@@ -5,6 +5,7 @@ import {
   numeric,
   timestamp,
   pgEnum,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "../../config/db";
@@ -27,6 +28,11 @@ export const payouts = pgTable("payouts", {
   status: payoutStatusEnum("status").notNull().default("LOCKED"),
   eligibleAt: timestamp("eligible_at").notNull(),
   releasedAt: timestamp("released_at"),
+
+  isFrozen: boolean("is_frozen")
+    .notNull()
+    .default(false),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

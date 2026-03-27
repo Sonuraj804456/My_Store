@@ -3,6 +3,7 @@ import { orderDb } from "../orders/order.db";
 import { db } from "../../config/db";
 import { messageDb } from "./message.db";
 import { stores as storeTable } from "../stores/store.db";
+import { adminAuditService } from "../admin/admin-audit.service";
 import { eq } from "drizzle-orm";
 
 async function resolveOrder(orderId: string) {
@@ -137,6 +138,11 @@ export const messageService = {
     if (!conversation) throw new ApiError(404, "Conversation not found");
     if (conversation.creatorId !== userId) throw new ApiError(403, "Access denied");
 
+    const store = await resolveStore(conversation.storeId);
+    if (store.isSuspended) {
+      throw new ApiError(403, "Cannot send message: store is suspended");
+    }
+
     const message = await messageDb.createMessage({
       conversationId,
       senderRole: "CREATOR",
@@ -194,6 +200,15 @@ export const messageService = {
     const message = await messageDb.findMessageById(messageId);
     if (!message) throw new ApiError(404, "Message not found");
     await messageDb.softDeleteMessage(messageId);
+
+    await adminAuditService.log({
+      adminId: "system",
+      action: "message_soft_delete",
+      entityType: "message",
+      entityId: messageId,
+      metadata: { messageId },
+    });
+
     return { ...message, deletedAt: new Date() };
   },
 };

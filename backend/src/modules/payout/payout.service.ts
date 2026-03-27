@@ -2,6 +2,7 @@ import { ApiError } from "../shared/api-error";
 import { payoutDb, payouts } from "./payout.db";
 import { jobDb } from "../jobs/job.db";
 import { env } from "../../config/env";
+import { adminAuditService } from "../admin/admin-audit.service";
 import { db } from "../../config/db";
 import { orders } from "../orders/order.db";
 import { stores } from "../stores/store.db";
@@ -72,6 +73,10 @@ export const payoutService = {
 
     if (!store) {
       throw new ApiError(404, "Store not found");
+    }
+
+    if (store.isSuspended) {
+      throw new ApiError(403, "Cannot create payout for suspended store");
     }
 
     const grossAmount = Number(order.totalAmount);
@@ -174,9 +179,47 @@ export const payoutService = {
     return enriched;
   },
 
+  async freezePayout(payoutId: string) {
+    const payout = await payoutDb.findById(payoutId);
+    if (!payout) throw new ApiError(404, "Payout not found");
+    if (payout.isFrozen) throw new ApiError(400, "Payout is already frozen");
+
+    await payoutDb.update(payoutId, { isFrozen: true });
+    await adminAuditService.log({
+      adminId: "system",
+      action: "freeze_payout",
+      entityType: "payout",
+      entityId: payoutId,
+      metadata: {},
+    });
+
+    return payoutDb.findById(payoutId);
+  },
+
+  async unfreezePayout(payoutId: string) {
+    const payout = await payoutDb.findById(payoutId);
+    if (!payout) throw new ApiError(404, "Payout not found");
+    if (!payout.isFrozen) throw new ApiError(400, "Payout is not frozen");
+
+    await payoutDb.update(payoutId, { isFrozen: false });
+    await adminAuditService.log({
+      adminId: "system",
+      action: "unfreeze_payout",
+      entityType: "payout",
+      entityId: payoutId,
+      metadata: {},
+    });
+
+    return payoutDb.findById(payoutId);
+  },
+
   async releasePayout(payoutId: string) {
     const payout = await payoutDb.findById(payoutId);
     if (!payout) throw new ApiError(404, "Payout not found");
+
+    if (payout.isFrozen) {
+      throw new ApiError(400, "Payout is frozen and cannot be released");
+    }
 
     if (payout.status === "RELEASED") {
       throw new ApiError(400, "Payout already released");
@@ -191,12 +234,24 @@ export const payoutService = {
       releasedAt: new Date(),
     });
 
+    await adminAuditService.log({
+      adminId: "system",
+      action: "release_payout",
+      entityType: "payout",
+      entityId: payoutId,
+      metadata: { payoutId },
+    });
+
     return payoutDb.findById(payoutId);
   },
 
   async cancelPayout(payoutId: string) {
     const payout = await payoutDb.findById(payoutId);
     if (!payout) throw new ApiError(404, "Payout not found");
+
+    if (payout.isFrozen) {
+      throw new ApiError(400, "Payout is frozen and cannot be cancelled");
+    }
 
     if (payout.status === "RELEASED") {
       throw new ApiError(400, "Released payout cannot be cancelled");
@@ -206,6 +261,14 @@ export const payoutService = {
 
     await payoutDb.update(payoutId, {
       status: "CANCELLED",
+    });
+
+    await adminAuditService.log({
+      adminId: "system",
+      action: "cancel_payout",
+      entityType: "payout",
+      entityId: payoutId,
+      metadata: { payoutId },
     });
 
     return payoutDb.findById(payoutId);
@@ -226,6 +289,10 @@ export const payoutService = {
     const payout = await payoutDb.findByOrderId(order.id);
     if (!payout) return null;
 
+    if (payout.isFrozen) {
+      throw new ApiError(400, "Payout is frozen and cannot be modified");
+    }
+
     if (payout.status === "RELEASED") {
       return payout; // no payout adjustment after release
     }
@@ -245,7 +312,24 @@ export const payoutService = {
     });
 
     const updated = await payoutDb.findById(payout.id);
-    if (updated) return updated;
+    if (updated) {
+      await adminAuditService.log({
+        adminId: "system",
+        action: "update_payout_refund",
+        entityType: "payout",
+        entityId: payout.id,
+        metadata: { refundAmount, oldStatus: payout.status, newStatus },
+      });
+      return updated;
+    }
+
+    await adminAuditService.log({
+      adminId: "system",
+      action: "update_payout_refund",
+      entityType: "payout",
+      entityId: payout.id,
+      metadata: { refundAmount, oldStatus: payout.status, newStatus },
+    });
 
     return {
       ...payout,

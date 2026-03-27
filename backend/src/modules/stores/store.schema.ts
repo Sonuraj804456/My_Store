@@ -74,3 +74,7 @@ export const updateStoreSchema = z.object({
     .boolean()
     .optional(),
 });
+
+export const suspendStoreSchema = z.object({
+  reason: z.string().min(5).max(300),
+});

@@ -148,6 +148,34 @@ describe("Order Creation", () => {
       })
     ).rejects.toThrow(ApiError);
   });
+
+  it("should block order when store is suspended", async () => {
+    (db.query.products.findFirst as any).mockResolvedValue({
+      id: "p1",
+      storeId: "s1",
+      status: "published",
+    });
+
+    (db.query.productVariants.findFirst as any).mockResolvedValue({
+      id: "v1",
+      price: 100,
+    });
+
+    (db.query.stores.findFirst as any).mockResolvedValue({
+      id: "s1",
+      isPublic: true,
+      isVacationMode: false,
+      isSuspended: true,
+    });
+
+    await expect(
+      orderService.createOrder({
+        productId: "p1",
+        variantId: "v1",
+        quantity: 1,
+      })
+    ).rejects.toThrow(ApiError);
+  });
 });
 
 /* =========================================================

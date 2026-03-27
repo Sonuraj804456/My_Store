@@ -54,6 +54,10 @@ export const downloadService = {
       throw new ApiError(400, "Order is cancelled");
     }
 
+    if (order.isRefunded) {
+      throw new ApiError(400, "Order has been refunded");
+    }
+
     if (order.status !== "PAID") {
       throw new ApiError(400, "Order not paid");
     }

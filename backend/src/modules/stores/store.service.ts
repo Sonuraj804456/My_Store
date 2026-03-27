@@ -1,7 +1,9 @@
 import { stores } from "./store.db";
-import { and, eq, isNull } from "drizzle-orm";
+import { payouts } from "../payout/payout.db";
+import { and, eq, isNull, not } from "drizzle-orm";
 import { ApiError } from "../shared/api-error";
 import { db } from "../../config/db";
+import { adminAuditService } from "../admin/admin-audit.service";
 
 export async function createStore(
   userId: string,
@@ -97,6 +99,7 @@ export async function updateOwnStore(
     throw new ApiError(404, "Store not found");
   }
 
+  // Optionally, owners may still update store metadata while suspended (admin handles business logic elsewhere).
   try {
     const [updated] = await db
       .update(stores)
@@ -137,6 +140,19 @@ export async function softDeleteStore(userId: string) {
     throw new ApiError(404, "Store not found");
   }
 
+  let payoutExists = null;
+  try {
+    payoutExists = await db.query.payouts.findFirst({
+      where: eq(payouts.storeId, store.id),
+    });
+  } catch {
+    payoutExists = null;
+  }
+
+  if (payoutExists) {
+    throw new ApiError(400, "Cannot delete store with existing payouts");
+  }
+
   await db
     .update(stores)
     .set({
@@ -155,7 +171,7 @@ export async function getPublicStoreByUsername(username: string) {
     ),
   });
 
-  if (!store) {
+  if (!store || store.isSuspended) {
     throw new ApiError(404, "Store not found");
   }
 
@@ -187,6 +203,66 @@ export async function adminGetStoreById(storeId: string) {
   return store;
 }
 
+export async function adminSuspendStore(storeId: string, reason: string, adminId = "system") {
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) });
+  if (!store) throw new ApiError(404, "Store not found");
+
+  if (store.isSuspended) {
+    throw new ApiError(400, "Store already suspended");
+  }
+
+  const [updated] = await db
+    .update(stores)
+    .set({
+      isSuspended: true,
+      suspensionReason: reason,
+      suspendedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, storeId))
+    .returning();
+
+  await adminAuditService.log({
+    adminId,
+    action: "suspend_store",
+    entityType: "store",
+    entityId: storeId,
+    metadata: { reason },
+  });
+
+  return updated;
+}
+
+export async function adminUnsuspendStore(storeId: string, adminId = "system") {
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) });
+  if (!store) throw new ApiError(404, "Store not found");
+
+  if (!store.isSuspended) {
+    throw new ApiError(400, "Store is not suspended");
+  }
+
+  const [updated] = await db
+    .update(stores)
+    .set({
+      isSuspended: false,
+      suspensionReason: null,
+      suspendedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, storeId))
+    .returning();
+
+  await adminAuditService.log({
+    adminId,
+    action: "unsuspend_store",
+    entityType: "store",
+    entityId: storeId,
+    metadata: {},
+  });
+
+  return updated;
+}
+
 export async function adminRestoreStore(storeId: string) {
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
@@ -200,6 +276,18 @@ export async function adminRestoreStore(storeId: string) {
     throw new ApiError(400, "Store is not deleted");
   }
 
+  const existing = await db.query.stores.findFirst({
+    where: and(
+      eq(stores.username, store.username),
+      isNull(stores.deletedAt),
+      not(eq(stores.id, storeId))
+    ),
+  });
+
+  if (existing) {
+    throw new ApiError(400, "Cannot restore store: username conflict");
+  }
+
   const [restored] = await db
     .update(stores)
     .set({
@@ -208,6 +296,14 @@ export async function adminRestoreStore(storeId: string) {
     })
     .where(eq(stores.id, storeId))
     .returning();
+
+  await adminAuditService.log({
+    adminId: "system",
+    action: "restore_store",
+    entityType: "store",
+    entityId: storeId,
+    metadata: { username: store.username },
+  });
 
   return restored;
 }

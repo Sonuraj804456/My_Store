@@ -19,6 +19,10 @@ const getUserStore = async (userId: string) => {
     throw new ApiError(404, "Store not found for this user");
   }
 
+  if (store.isSuspended) {
+    throw new ApiError(403, "Store is suspended");
+  }
+
   return store;
 };
 

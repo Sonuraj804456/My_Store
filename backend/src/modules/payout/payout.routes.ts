@@ -14,5 +14,7 @@ router.get("/payouts/summary", requireRole(Roles.CREATOR), payoutController.getS
 router.get("/admin/payouts", requireRole(Roles.ADMIN), payoutController.adminListPayouts);
 router.patch("/admin/payouts/:id/release", requireRole(Roles.ADMIN), payoutController.adminReleasePayout);
 router.patch("/admin/payouts/:id/cancel", requireRole(Roles.ADMIN), payoutController.adminCancelPayout);
+router.patch("/admin/payouts/:id/freeze", requireRole(Roles.ADMIN), payoutController.adminFreezePayout);
+router.patch("/admin/payouts/:id/unfreeze", requireRole(Roles.ADMIN), payoutController.adminUnfreezePayout);
 
 export default router;

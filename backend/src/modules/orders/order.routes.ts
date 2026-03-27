@@ -3,12 +3,13 @@ import { orderController } from "./order.controller";
 import { requireRole } from "../auth/requireRole";
 import { Roles } from "../types/roles";
 import { requireAuth } from "../auth/auth.middleware";
+import { ipRateLimiter } from "../shared/rate-limit";
 
 const router: Router = Router();
 
 /* ================= PUBLIC ================= */
 
-router.post("/orders", orderController.create);
+router.post("/orders", ipRateLimiter, orderController.create);
 
 /* ================= BUYER ================= */
 

@@ -37,6 +37,13 @@ export const stores = pgTable("stores", {
     .notNull()
     .default(false),
 
+  isSuspended: boolean("is_suspended")
+    .notNull()
+    .default(false),
+
+  suspensionReason: text("suspension_reason"),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+
   announcementText: varchar("announcement_text", { length: 200 }),
 
   announcementEnabled: boolean("announcement_enabled")

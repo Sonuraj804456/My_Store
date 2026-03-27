@@ -124,6 +124,23 @@ describe("Message module", () => {
     expect(result.messages).toEqual([{ id: "m1", content: "hello" }]);
   });
 
+  it("should block creator from sending message when store is suspended", async () => {
+    (messageDb.findConversationById as any).mockResolvedValue({
+      id: "c1",
+      storeId: "s1",
+      creatorId: "creator1",
+    });
+
+    (db.query.stores.findFirst as any).mockResolvedValue({
+      id: "s1",
+      isSuspended: true,
+    });
+
+    await expect(
+      messageService.sendCreatorMessage("c1", "creator1", "hello")
+    ).rejects.toThrow(ApiError);
+  });
+
   it("should allow buyer to escalate dispute", async () => {
     (messageDb.findConversationById as any).mockResolvedValue({
       id: "c1",

@@ -29,6 +29,7 @@ const mockStore = (overrides?: Partial<any>) => ({
   bannerUrl: null,
   isPublic: false,
   isVacationMode: false,
+  isSuspended: false,
   announcementText: null,
   announcementEnabled: false,
   createdAt: new Date(),
@@ -445,6 +446,39 @@ describe("Store Service", () => {
         "Store not found"
       );
     });
+
+    it("should suspend and unsuspend store via admin actions", async () => {
+      const storeId = "store-123";
+      const store = mockStore({ id: storeId, isSuspended: false });
+      const suspendedStore = mockStore({ id: storeId, isSuspended: true });
+      const unsuspendedStore = mockStore({ id: storeId, isSuspended: false });
+
+      // suspend
+      db.query.stores.findFirst
+        .mockResolvedValueOnce(store)
+        .mockResolvedValueOnce(suspendedStore);
+      db.update.mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValueOnce([suspendedStore]) }),
+        }),
+      });
+
+      const resultSuspend = await storeService.adminSuspendStore(storeId, "policy violation", "admin-1");
+      expect(resultSuspend.isSuspended).toBe(true);
+
+      // unsuspend
+      db.query.stores.findFirst
+        .mockResolvedValueOnce(suspendedStore)
+        .mockResolvedValueOnce(unsuspendedStore);
+      db.update.mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValueOnce([unsuspendedStore]) }),
+        }),
+      });
+
+      const resultUnsuspend = await storeService.adminUnsuspendStore(storeId, "admin-1");
+      expect(resultUnsuspend.isSuspended).toBe(false);
+    });
   });
 
   // ============================================
@@ -453,7 +487,7 @@ describe("Store Service", () => {
   describe("Edge cases", () => {
     it("should handle vacation mode independently of visibility", async () => {
       const userId = "user-123";
-      const store = mockStore({ userId, isPublic: true, isVacationMode: false });
+      const store = mockStore({ userId, isPublic: true, isVacationMode: false, isSuspended: false });
 
       db.query.stores.findFirst.mockResolvedValueOnce(store);
 

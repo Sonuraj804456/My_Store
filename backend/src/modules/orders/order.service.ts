@@ -6,6 +6,7 @@ import { db } from "../../config/db";
 import { products, productVariants } from "../products/product.db";
 import { stores } from "../stores/store.db";
 import { downloadService } from "../download/download.service";
+import { adminAuditService } from "../admin/admin-audit.service";
 import { eq, and, isNull } from "drizzle-orm";
 
 /* ================= LIFECYCLE ================= */
@@ -128,6 +129,10 @@ export const orderService = {
 
     if (!store) {
       throw new ApiError(404, "Store not found");
+    }
+
+    if (store.isSuspended) {
+      throw new ApiError(403, "Store is suspended");
     }
 
     if (!store.isPublic || store.isVacationMode) {
@@ -264,6 +269,10 @@ export const orderService = {
     throw new ApiError(404, "Store not found");
   }
 
+  if (store.isSuspended) {
+    throw new ApiError(403, "Store is suspended");
+  }
+
   const order = await orderDb.findById(orderId);
 
   if (!order) {
@@ -315,6 +324,14 @@ export const orderService = {
     if (status === "CANCELLED" || status === "RETURNED") {
       await handleStatusChangeToCancelledOrReturned(order);
     }
+
+    await adminAuditService.log({
+      adminId: "system",
+      action: "order_status_override",
+      entityType: "order",
+      entityId: orderId,
+      metadata: { from: order.status, to: status },
+    });
   },
 
   /* ================= REFUND ================= */
@@ -352,6 +369,14 @@ export const orderService = {
     });
 
     await payoutService.applyRefund(order, refundAmount);
+
+    await adminAuditService.log({
+      adminId: userId,
+      action: "order_refund",
+      entityType: "order",
+      entityId: orderId,
+      metadata: { refundAmount },
+    });
   },
 
   /* ================= SOFT DELETE ================= */

@@ -4,6 +4,7 @@ import { validateBody } from "../shared/validate-body";
 import { buyerMessageSchema, creatorMessageSchema, adminDisputeSchema } from "./message.schema";
 import { requireAuth } from "../auth/auth.middleware";
 import { requireRole } from "../auth/requireRole";
+import { ipRateLimiter } from "../shared/rate-limit";
 import { Roles } from "../types/roles";
 import { z } from "zod";
 
@@ -12,6 +13,7 @@ const router: Router = Router();
 // BUYER (guest) endpoints
 router.post(
   "/messages/order/:orderId",
+  ipRateLimiter,
   validateBody(buyerMessageSchema),
   messageController.sendBuyerMessage
 );
@@ -37,6 +39,7 @@ router.post(
   "/messages/:conversationId",
   requireAuth,
   requireRole(Roles.CREATOR),
+  ipRateLimiter,
   validateBody(creatorMessageSchema),
   messageController.sendCreatorMessage
 );

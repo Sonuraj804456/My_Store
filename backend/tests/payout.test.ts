@@ -97,7 +97,17 @@ describe("Payout Service", () => {
   });
 
   it("should prevent release of non-eligible payout", async () => {
-    (payoutDb.findById as any).mockResolvedValue({ id: "p1", status: "LOCKED" });
+    (payoutDb.findById as any).mockResolvedValue({ id: "p1", status: "LOCKED", isFrozen: false });
     await expect(payoutService.releasePayout("p1")).rejects.toThrow(ApiError);
+  });
+
+  it("should prevent release of frozen payout", async () => {
+    (payoutDb.findById as any).mockResolvedValue({ id: "p1", status: "ELIGIBLE", isFrozen: true });
+    await expect(payoutService.releasePayout("p1")).rejects.toThrow(ApiError);
+  });
+
+  it("should prevent cancel of frozen payout", async () => {
+    (payoutDb.findById as any).mockResolvedValue({ id: "p1", status: "LOCKED", isFrozen: true });
+    await expect(payoutService.cancelPayout("p1")).rejects.toThrow(ApiError);
   });
 });

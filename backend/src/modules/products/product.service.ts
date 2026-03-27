@@ -1,4 +1,4 @@
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, inArray, not } from "drizzle-orm";
 import {
   products,
   categories,
@@ -10,6 +10,7 @@ import { ApiError } from "../shared/api-error";
 import { db } from "../../config/db";
 
 import { stores } from "../stores/store.db";
+import { orders } from "../orders/order.db";
 
 const getStoreByUser = async (userId: string) => {
   console.log("Looking for store with userId:", userId);
@@ -22,6 +23,10 @@ const getStoreByUser = async (userId: string) => {
 
   if (!store) {
     throw new ApiError(404, "Store not found for this user");
+  }
+
+  if (store.isSuspended) {
+    throw new ApiError(403, "Store is suspended");
   }
 
   return store;
@@ -256,6 +261,17 @@ export const deleteVariant = async (
     );
   }
 
+  const referencedOrder = await db.query.orders.findFirst({
+    where: and(
+      eq(orders.variantId, variantId),
+      isNull(orders.deletedAt)
+    ),
+  });
+
+  if (referencedOrder) {
+    throw new ApiError(400, "Cannot delete variant referenced by existing orders");
+  }
+
   await db
     .delete(productVariants)
     .where(
@@ -323,6 +339,19 @@ export const softDeleteProduct = async (
   productId: string
 ) => {
   await getSingleProduct(storeId, productId);
+
+  const activeOrder = await db.query.orders.findFirst({
+    where: and(
+      eq(orders.productId, productId),
+      isNull(orders.deletedAt),
+      not(eq(orders.status, "CANCELLED")),
+      not(eq(orders.status, "RETURNED"))
+    ),
+  });
+
+  if (activeOrder) {
+    throw new ApiError(400, "Cannot delete product with active orders");
+  }
 
   await db
     .update(products)
