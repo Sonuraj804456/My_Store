@@ -24,7 +24,22 @@ pnpm exec drizzle-kit push
 This applies any new migrations (including DB-level constraints).
 
 Run all backend tests:
-docker compose exec backend pnpm test
+# Start the database first if it is not already running
+# from the repo root
+
+docker compose up -d db
+
+# Then run tests from the backend folder
+cd backend && pnpm test
+
+The backend test runner now loads `.env.test` automatically when `NODE_ENV=test`.
+
+If you want to run tests directly from root, make sure Docker is running and the Postgres service is available.
+
+Environment configuration:
+- Copy `.env.example` to `.env` in the repo root for local development.
+- Use `BETTER_AUTH_SECRET` (not `BETTERAUTH_SECRET`) for authentication.
+- `.env.test` is loaded automatically for backend tests.
 
 📌 Common Commands
 # Start all services

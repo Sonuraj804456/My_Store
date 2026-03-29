@@ -4,6 +4,16 @@ import { payoutDb } from "../payout/payout.db";
 import { eq } from "drizzle-orm";
 
 let jobRunnerInterval: NodeJS.Timeout | null = null;
+
+function isSchemaMissingError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { message?: string };
+  const message = typeof err.message === "string" ? err.message : "";
+
+  return /relation \"jobs\" does not exist|relation \"user\" does not exist|no such table/i.test(
+    message
+  );
+}
 let isRunning = false;
 const MAX_ATTEMPTS = 3;
 const JOB_POLL_INTERVAL = 30000; // 30 seconds
@@ -29,7 +39,11 @@ export async function startJobRunner() {
   }, JOB_POLL_INTERVAL);
 
   // Run immediately on startup
-  await processJobs();
+  try {
+    await processJobs();
+  } catch (error) {
+    console.error("Initial job runner execution failed:", error);
+  }
 }
 
 /**
@@ -71,6 +85,15 @@ async function processJobs() {
         console.error(`Failed to process job ${job.id}:`, error);
       }
     }
+  } catch (error) {
+    if (isSchemaMissingError(error)) {
+      console.warn(
+        "Job runner paused: database schema is not ready yet. Will retry later."
+      );
+      return;
+    }
+
+    throw error;
   } finally {
     isRunning = false;
   }

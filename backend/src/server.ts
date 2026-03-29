@@ -1,8 +1,8 @@
-import "dotenv/config";
 import app from "./app";
 import { userService } from "./modules/auth/auth.service";
 import { auth } from "./modules/auth/auth.core";
 import { startJobRunner } from "./modules/jobs/job-runner";
+import { initializeDatabase } from "./config/db-init";
 
 async function seedAdmin() {
   const email = process.env.ADMIN_EMAIL;
@@ -51,8 +51,24 @@ async function seedAdmin() {
 
 const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
-  await seedAdmin();
-  await startJobRunner();
-});
+async function startApp() {
+  try {
+    console.log("🔧 Initializing database and schema...");
+    await initializeDatabase();
+
+    console.log("👤 Seeding admin user if configured...");
+    await seedAdmin();
+
+    console.log("🎯 Starting job runner...");
+    await startJobRunner();
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start backend:", error);
+    process.exit(1);
+  }
+}
+
+startApp();
