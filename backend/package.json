@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "ts-node-dev --files --project tsconfig.json src/server.ts",
     "build": "tsc",
+    "db:ensure-test": "node ./scripts/ensure-test-db.js",
     "db:migrate": "drizzle-kit migrate",
-    "test": "vitest run",
+    "test": "NODE_ENV=test pnpm run db:ensure-test && NODE_ENV=test pnpm run db:migrate && NODE_ENV=test vitest run",
     "test:ui": "vitest --ui"
   },
   "keywords": [],

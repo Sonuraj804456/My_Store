@@ -32,7 +32,7 @@ docker compose up -d db
 # Then run tests from the backend folder
 cd backend && pnpm test
 
-The backend test runner now loads `.env.test` automatically when `NODE_ENV=test`.
+The backend test runner now loads `.env.test` automatically when `NODE_ENV=test` and will create the test database if it does not exist.
 
 If you want to run tests directly from root, make sure Docker is running and the Postgres service is available.
 
