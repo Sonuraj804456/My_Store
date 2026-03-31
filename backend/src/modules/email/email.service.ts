@@ -12,18 +12,20 @@ const emailTemplates: Record<string, (data: any) => { subject: string; body: str
     subject: "Order Confirmed",
     body: `
       <h1>Order Confirmed!</h1>
-      <p>Thank you for your order #${data.orderId}</p>
-      <p>Total: $${data.totalAmount}</p>
-      <p>Status: ${data.status}</p>
+      <p>Thank you for your order #${data.orderId ?? "unknown"}</p>
+      <p>Total: $${data.totalAmount ?? "0.00"}</p>
+      <p>Status: ${data.status ?? "UNKNOWN"}</p>
     `,
   }),
 
   ORDER_STATUS_UPDATED: (data) => ({
-    subject: `Order Status Updated: ${data.status}`,
+    subject: `Order Status Updated: ${data.status ?? "UNKNOWN"}`,
     body: `
       <h1>Order Status Updated</h1>
-      <p>Your order #${data.orderId} is now <strong>${data.status}</strong></p>
-      <p>Timestamp: ${new Date(data.updatedAt).toLocaleString()}</p>
+      <p>Your order #${data.orderId ?? "unknown"} is now <strong>${data.status ?? "UNKNOWN"}</strong></p>
+      <p>Timestamp: ${
+        data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "unknown"
+      }</p>
     `,
   }),
 

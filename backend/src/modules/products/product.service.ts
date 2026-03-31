@@ -40,6 +40,17 @@ export const createCategory = async (
   storeId: string,
   name: string
 ) => {
+  const existing = await db.query.categories.findFirst({
+    where: and(
+      eq(categories.storeId, storeId),
+      eq(categories.name, name)
+    ),
+  });
+
+  if (existing) {
+    throw new ApiError(409, "Category already exists in this store");
+  }
+
   try {
     const [category] = await db
       .insert(categories)
@@ -50,8 +61,12 @@ export const createCategory = async (
       .returning();
 
     return category;
-  } catch {
-    throw new ApiError(409, "Category already exists in this store");
+  } catch (error: any) {
+    // Handle a rare race condition where another request inserts the same category first.
+    if (error?.message?.includes("unique_store_category")) {
+      throw new ApiError(409, "Category already exists in this store");
+    }
+    throw error;
   }
 };
 

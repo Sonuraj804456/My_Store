@@ -102,6 +102,12 @@ async function processJobs() {
 /**
  * Process a single job
  */
+const INVALID_JOB_ERROR_PATTERNS = [
+  /Invalid payout eligibility job/i,
+  /Invalid email job payload/i,
+  /Invalid payoutId/i,
+];
+
 async function processJob(job: any) {
   try {
     // Mark as processing
@@ -124,6 +130,15 @@ async function processJob(job: any) {
   } catch (error: any) {
     const attempts = (job.attempts ?? 0) + 1;
     const errorMessage = error.message || String(error);
+    const isInvalidJobError = INVALID_JOB_ERROR_PATTERNS.some((pattern) =>
+      pattern.test(errorMessage)
+    );
+
+    if (isInvalidJobError) {
+      await jobDb.updateStatus(job.id, "FAILED", errorMessage);
+      console.error(`❌ Job ${job.id} failed: ${errorMessage}`);
+      return;
+    }
 
     await jobDb.incrementAttempts(job.id);
 
@@ -155,10 +170,12 @@ async function handleEmailJob(job: any): Promise<boolean> {
     throw new Error("Invalid email job payload: missing to or template");
   }
 
+  const safeData = typeof data === "object" && data !== null ? data : {};
+
   await emailService.send({
     to,
     template,
-    data,
+    data: safeData,
   });
 
   return true;
@@ -168,11 +185,17 @@ async function handleEmailJob(job: any): Promise<boolean> {
  * Handle PAYOUT_ELIGIBILITY job type
  * Processes payout eligibility transitions from LOCKED -> ELIGIBLE
  */
+const isUuid = (value: unknown) =>
+  typeof value === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value as string);
+
 async function handlePayoutEligibilityJob(job: any): Promise<boolean> {
   const { payoutId } = job.payload;
 
-  if (!payoutId) {
-    throw new Error("Invalid payout eligibility job: missing payoutId");
+  if (!payoutId || !isUuid(payoutId)) {
+    throw new Error(
+      "Invalid payout eligibility job: missing or invalid payoutId"
+    );
   }
 
   const payout = await payoutDb.findById(payoutId);
