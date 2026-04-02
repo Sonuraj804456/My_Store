@@ -1,0 +1,9 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const auth_middleware_1 = require("../auth/auth.middleware");
+const user_controller_1 = require("./user.controller");
+const express_1 = require("express");
+const router = (0, express_1.Router)();
+router.get("/me", auth_middleware_1.requireAuth, user_controller_1.getMe);
+exports.default = router;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiL2FwcC9zcmMvbW9kdWxlcy91c2Vycy91c2VyLnJvdXRlcy50cyIsInNvdXJjZXMiOlsiL2FwcC9zcmMvbW9kdWxlcy91c2Vycy91c2VyLnJvdXRlcy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUNBLDZEQUFzRDtBQUN0RCx1REFBMEM7QUFFMUMscUNBQThEO0FBRTlELE1BQU0sTUFBTSxHQUFXLElBQUEsZ0JBQU0sR0FBRSxDQUFDO0FBRWhDLE1BQU0sQ0FBQyxHQUFHLENBQUMsS0FBSyxFQUFFLDZCQUFXLEVBQUUsdUJBQUssQ0FBQyxDQUFDO0FBRXRDLGtCQUFlLE1BQU0sQ0FBQyIsInNvdXJjZXNDb250ZW50IjpbIlxuaW1wb3J0IHsgcmVxdWlyZUF1dGggfSBmcm9tIFwiLi4vYXV0aC9hdXRoLm1pZGRsZXdhcmVcIjtcbmltcG9ydCB7IGdldE1lIH0gZnJvbSBcIi4vdXNlci5jb250cm9sbGVyXCI7XG5cbmltcG9ydCB7IFJvdXRlciwgdHlwZSBSZXF1ZXN0LCB0eXBlIFJlc3BvbnNlIH0gZnJvbSBcImV4cHJlc3NcIjtcblxuY29uc3Qgcm91dGVyOiBSb3V0ZXIgPSBSb3V0ZXIoKTtcblxucm91dGVyLmdldChcIi9tZVwiLCByZXF1aXJlQXV0aCwgZ2V0TWUpO1xuXG5leHBvcnQgZGVmYXVsdCByb3V0ZXI7XG4iXX0=

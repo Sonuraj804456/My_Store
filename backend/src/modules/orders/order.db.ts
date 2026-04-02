@@ -9,7 +9,7 @@ import {
   jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, gte, lte } from "drizzle-orm";
 import { db } from "../../config/db";
 
 /* ================= ENUMS ================= */
@@ -83,10 +83,35 @@ export const orderDb = {
   updateRefund: (id: string, data: any) =>
     db.update(orders).set(data).where(eq(orders.id, id)),
 
-  listByStore: (storeId: string) =>
-    db.query.orders.findMany({
-      where: and(eq(orders.storeId, storeId), isNull(orders.deletedAt)),
-    }),
+  listByStore: (
+    storeId: string,
+    filters?: {
+      status?: OrderStatus;
+      from?: string;
+      to?: string;
+    }
+  ) => {
+    const clauses: any[] = [eq(orders.storeId, storeId), isNull(orders.deletedAt)];
+
+    if (filters?.status) {
+      clauses.push(eq(orders.status, filters.status));
+    }
+
+    const from = filters?.from ? new Date(filters.from) : undefined;
+    const to = filters?.to ? new Date(filters.to) : undefined;
+
+    if (from && !Number.isNaN(from.getTime())) {
+      clauses.push(gte(orders.createdAt, from));
+    }
+
+    if (to && !Number.isNaN(to.getTime())) {
+      clauses.push(lte(orders.createdAt, to));
+    }
+
+    return db.query.orders.findMany({
+      where: and(...clauses),
+    });
+  },
 
   listByBuyer: (buyerId: string) =>
     db.query.orders.findMany({

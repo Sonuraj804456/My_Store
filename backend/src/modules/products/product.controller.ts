@@ -1,23 +1,16 @@
 import { Request, Response } from "express";
-import { eq } from "drizzle-orm";
 
 import * as service from "./product.service";
+import * as storeService from "../stores/store.service";
 import { ApiError } from "../shared/api-error";
-import { db } from "../../config/db";
-import { stores } from "../stores/store.db";
+import { success } from "../shared/response";
 
 /* =========================================================
    Helper: Resolve Store From Logged In User
 ========================================================= */
 
 const getUserStore = async (userId: string) => {
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.userId, userId),
-  });
-
-  if (!store) {
-    throw new ApiError(404, "Store not found for this user");
-  }
+  const store = await storeService.getOwnStore(userId);
 
   if (store.isSuspended) {
     throw new ApiError(403, "Store is suspended");
@@ -40,7 +33,7 @@ export const createCategory = async (req: Request, res: Response) => {
     req.body.name
   );
 
-  res.status(201).json(category);
+  res.status(201).json(success(category));
 };
 
 export const listCategories = async (req: Request, res: Response) => {
@@ -49,7 +42,7 @@ export const listCategories = async (req: Request, res: Response) => {
   const store = await getUserStore(req.user.id);
 
   const categories = await service.listCategories(store.id);
-  res.json(categories);
+  res.json(success(categories));
 };
 
 /* =========================================================
@@ -62,11 +55,11 @@ export const createProduct = async (req: Request, res: Response) => {
   const store = await getUserStore(req.user.id);
 
   const product = await service.createProduct(
-    store.id,   // ✅ now correct
+    store.id,
     req.body
   );
 
-  res.status(201).json(product);
+  res.status(201).json(success(product));
 };
 export const getOwnProducts = async (req: Request, res: Response) => {
   if (!req.user?.id) throw new ApiError(401, "Unauthorized");
@@ -74,7 +67,7 @@ export const getOwnProducts = async (req: Request, res: Response) => {
   const store = await getUserStore(req.user.id);
 
   const products = await service.getOwnProducts(store.id);
-  res.json(products);
+  res.json(success(products));
 };
 
 export const getSingleProduct = async (req: Request, res: Response) => {
@@ -86,7 +79,7 @@ export const getSingleProduct = async (req: Request, res: Response) => {
   const store = await getUserStore(req.user.id);
 
   const product = await service.getSingleProduct(store.id, id);
-  res.json(product);
+  res.json(success(product));
 };
 
 export const updateProduct = async (req: Request, res: Response) => {
@@ -103,7 +96,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     req.body
   );
 
-  res.json(product);
+  res.json(success(product));
 };
 
 export const deleteProduct = async (req: Request, res: Response) => {
@@ -138,7 +131,7 @@ export const addVariant = async (req: Request, res: Response) => {
     req.body
   );
 
-  res.status(201).json(variant);
+  res.status(201).json(success(variant));
 };
 
 export const updateVariant = async (req: Request, res: Response) => {
@@ -158,7 +151,7 @@ export const updateVariant = async (req: Request, res: Response) => {
     req.body
   );
 
-  res.json(variant);
+  res.json(success(variant));
 };
 
 export const deleteVariant = async (req: Request, res: Response) => {
@@ -194,7 +187,7 @@ export const addMedia = async (req: Request, res: Response) => {
     req.body
   );
 
-  res.status(201).json(media);
+  res.status(201).json(success(media));
 };
 
 export const removeMedia = async (req: Request, res: Response) => {
@@ -221,7 +214,7 @@ export const listPublishedByStore = async (req: Request, res: Response) => {
     throw new ApiError(400, "Invalid store username");
 
   const products = await service.listPublishedByStore(username);
-  res.json(products);
+  res.json(success(products));
 };
 
 export const getSinglePublishedProduct = async (
@@ -238,6 +231,6 @@ export const getSinglePublishedProduct = async (
     productId
   );
 
-  res.json(product);
+  res.json(success(product));
 };
 

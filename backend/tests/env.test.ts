@@ -5,7 +5,7 @@ describe("Env validation", () => {
   it("should validate correct env vars", () => {
     const mock = {
       DATABASE_URL: "postgres://db",
-      BETTERAUTH_SECRET: "secret123",
+      BETTER_AUTH_SECRET: "secret123",
       PORT: "3000",
       NODE_ENV: "development",
       PLATFORM_COMMISSION_PERCENT: "10",
@@ -19,7 +19,7 @@ describe("Env validation", () => {
   it("should fail on missing env vars", () => {
     const mock = {
       DATABASE_URL: undefined,
-      BETTERAUTH_SECRET: undefined,
+      BETTER_AUTH_SECRET: undefined,
       PORT: undefined,
       NODE_ENV: undefined,
     };

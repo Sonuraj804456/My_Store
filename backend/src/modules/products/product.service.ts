@@ -12,7 +12,7 @@ import { db } from "../../config/db";
 import { stores } from "../stores/store.db";
 import { orders } from "../orders/order.db";
 
-const getStoreByUser = async (userId: string) => {
+export const getStoreByUser = async (userId: string) => {
   console.log("Looking for store with userId:", userId);
 
   const store = await db.query.stores.findFirst({
@@ -383,18 +383,41 @@ export const softDeleteProduct = async (
    PUBLIC APIs
 ========================================================= */
 
+const hydratePublishedProduct = async (product: any) => {
+  const [variants, media] = await Promise.all([
+    db.select()
+      .from(productVariants)
+      .where(eq(productVariants.productId, product.id)),
+    db.select()
+      .from(productMedia)
+      .where(eq(productMedia.productId, product.id)),
+  ]);
+
+  return {
+    ...product,
+    variants,
+    media,
+  };
+};
+
 export const listPublishedByStore = async (
   username: string
 ) => {
   const store = await db.query.stores.findFirst({
-    where: (stores, { eq }) => eq(stores.username, username),
+    where: (stores, { and, eq, isNull }) =>
+      and(
+        eq(stores.username, username),
+        eq(stores.isPublic, true),
+        eq(stores.isSuspended, false),
+        isNull(stores.deletedAt)
+      ),
   });
 
   if (!store) {
     throw new ApiError(404, "Store not found");
   }
 
-  return db
+  const publishedProducts = await db
     .select()
     .from(products)
     .where(
@@ -404,6 +427,10 @@ export const listPublishedByStore = async (
         isNull(products.deletedAt)
       )
     );
+
+  return Promise.all(
+    publishedProducts.map(hydratePublishedProduct)
+  );
 };
 
 export const getSinglePublishedProduct = async (
@@ -411,7 +438,13 @@ export const getSinglePublishedProduct = async (
   productId: string
 ) => {
   const store = await db.query.stores.findFirst({
-    where: (stores, { eq }) => eq(stores.username, username),
+    where: (stores, { and, eq, isNull }) =>
+      and(
+        eq(stores.username, username),
+        eq(stores.isPublic, true),
+        eq(stores.isSuspended, false),
+        isNull(stores.deletedAt)
+      ),
   });
 
   if (!store) {
@@ -435,5 +468,5 @@ export const getSinglePublishedProduct = async (
     throw new ApiError(404, "Product not found");
   }
 
-  return product;
+  return hydratePublishedProduct(product);
 };

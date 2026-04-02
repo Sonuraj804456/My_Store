@@ -1,22 +1,7 @@
 import { Request, Response } from "express";
 import { ApiError } from "../shared/api-error";
+import { success } from "../shared/response";
 import { downloadService } from "./download.service";
-import { db } from "../../config/db";
-import { products } from "../products/product.db";
-import { stores } from "../stores/store.db";
-import { orders } from "../orders/order.db";
-import { Roles } from "../types/roles";
-import { eq } from "drizzle-orm";
-
-const getUserStore = async (userId: string) => {
-  const store = await db.query.stores.findFirst({
-    where: (storesTable, { eq }) => eq(storesTable.userId, userId),
-  });
-
-  if (!store) throw new ApiError(404, "Store not found for this user");
-
-  return store;
-};
 
 export const downloadController = {
   publicDownload: async (req: Request, res: Response) => {
@@ -33,7 +18,7 @@ export const downloadController = {
       String(userAgent)
     );
 
-    res.json(result);
+    res.json(success(result));
   },
 
   creatorList: async (req: Request, res: Response) => {
@@ -41,18 +26,12 @@ export const downloadController = {
     const productId = req.params.id;
     if (typeof productId !== "string") throw new ApiError(400, "Invalid product id");
 
-    const store = await getUserStore(req.user.id);
+    const downloads = await downloadService.listByProductForCreator(
+      req.user.id,
+      productId
+    );
 
-    const product = await db.query.products.findFirst({
-      where: (p, { eq }) =>
-        eq(p.id, productId) && eq(p.storeId, store.id),
-    });
-
-    if (!product) throw new ApiError(404, "Product not found");
-
-    const downloads = await downloadService.listByProduct(productId);
-
-    return res.json({ success: true, data: downloads, error: null });
+    return res.json(success(downloads));
   },
 
   getTokenByOrder: async (req: Request, res: Response) => {
@@ -62,36 +41,12 @@ export const downloadController = {
     if (!orderId || typeof orderId !== "string")
       throw new ApiError(400, "Invalid order id");
 
-    const order = await db.query.orders.findFirst({
-      where: eq(orders.id, orderId),
-    });
+    const tokenData = await downloadService.getTokenForUser(
+      req.user,
+      orderId
+    );
 
-    if (!order) throw new ApiError(404, "Order not found");
-    if (order.status !== "PAID") throw new ApiError(400, "Order not paid");
-
-    const role = req.user.role as Roles;
-
-    if (role === Roles.BUYER) {
-      if (order.buyerId !== req.user.id) throw new ApiError(403, "Forbidden");
-    } else if (role === Roles.CREATOR) {
-      const product = await db.query.products.findFirst({
-        where: eq(products.id, order.productId),
-      });
-      if (!product) throw new ApiError(404, "Product not found");
-
-      const store = await db.query.stores.findFirst({
-        where: eq(stores.id, product.storeId),
-      });
-      if (!store) throw new ApiError(404, "Store not found");
-      if (store.userId !== req.user.id) throw new ApiError(403, "Forbidden");
-    } else if (role !== Roles.ADMIN) {
-      throw new ApiError(403, "Forbidden");
-    }
-
-    const download = await downloadService.findByOrderId(orderId);
-    if (!download) throw new ApiError(404, "Download token not found");
-
-    res.json({ success: true, data: { token: download.token }, error: null });
+    res.json(success(tokenData));
   },
 
   adminList: async (req: Request, res: Response) => {
@@ -103,6 +58,6 @@ export const downloadController = {
       downloadCount: d.downloadCount,
       createdAt: d.createdAt,
     }));
-    res.json(sanitized);
+    res.json(success(sanitized));
   },
 };

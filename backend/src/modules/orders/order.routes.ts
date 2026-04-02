@@ -4,12 +4,23 @@ import { requireRole } from "../auth/requireRole";
 import { Roles } from "../types/roles";
 import { requireAuth } from "../auth/auth.middleware";
 import { ipRateLimiter } from "../shared/rate-limit";
+import { validateBody } from "../shared/validate-body";
+import {
+  createOrderSchema,
+  updateStatusSchema,
+  refundSchema,
+} from "./order.schema";
 
 const router: Router = Router();
 
 /* ================= PUBLIC ================= */
 
-router.post("/orders", ipRateLimiter, orderController.create);
+router.post(
+  "/orders",
+  ipRateLimiter,
+  validateBody(createOrderSchema),
+  orderController.create
+);
 
 /* ================= BUYER ================= */
 
@@ -24,15 +35,23 @@ router.get(
 
 router.get(
   "/orders",
-  requireAuth,                  // ✅ authenticate first
-  requireRole(Roles.CREATOR),   // ✅ then check role
+  requireAuth,
+  requireRole(Roles.CREATOR),
   orderController.list
+);
+
+router.get(
+  "/orders/:id",
+  requireAuth,
+  requireRole(Roles.CREATOR),
+  orderController.getById
 );
 
 router.patch(
   "/orders/:id/status",
   requireAuth,
   requireRole(Roles.CREATOR),
+  validateBody(updateStatusSchema),
   orderController.updateStatusCreator
 );
 
@@ -40,6 +59,7 @@ router.patch(
   "/orders/:id/refund",
   requireAuth,
   requireRole(Roles.CREATOR),
+  validateBody(refundSchema),
   orderController.markRefund
 );
 
@@ -56,6 +76,7 @@ router.patch(
   "/admin/orders/:id/status",
   requireAuth,
   requireRole(Roles.ADMIN),
+  validateBody(updateStatusSchema),
   orderController.updateStatusAdmin
 );
 

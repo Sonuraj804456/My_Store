@@ -172,6 +172,10 @@ export const messageService = {
       throw new ApiError(403, "Access denied");
     }
 
+    if (conversation.isDisputed) {
+      throw new ApiError(400, "Conversation is already disputed");
+    }
+
     return messageDb.setDispute(conversationId, true);
   },
 
@@ -191,6 +195,10 @@ export const messageService = {
   async resolveDispute(conversationId: string) {
     const conversation = await messageDb.findConversationById(conversationId);
     if (!conversation) throw new ApiError(404, "Conversation not found");
+
+    if (!conversation.isDisputed) {
+      throw new ApiError(400, "Conversation is not disputed");
+    }
 
     await messageDb.setDispute(conversationId, false);
     return { ...conversation, isDisputed: false };

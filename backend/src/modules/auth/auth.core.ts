@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../../config/db";
+import { env } from "../../config/env";
 import * as schema from "./auth.schema";
 
 export const auth = betterAuth({
@@ -48,6 +49,6 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7,
   },
 
-  secret: process.env.BETTER_AUTH_SECRET!,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  secret: env.BETTER_AUTH_SECRET,
+  baseURL: env.BETTER_AUTH_URL ?? "http://localhost:3000",
 });

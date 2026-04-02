@@ -289,6 +289,47 @@ describe("Creator Store Isolation", () => {
       )
     ).rejects.toThrow(ApiError);
   });
+
+  it("should return creator order by id only when it belongs to the creator's store", async () => {
+    (db.query.stores.findFirst as any).mockResolvedValue({
+      id: "s1",
+    });
+
+    (orderDb.findById as any).mockResolvedValue({
+      id: "o1",
+      storeId: "s1",
+    });
+
+    const order = await orderService.getOrderForCreator(
+      "user1",
+      "o1"
+    );
+
+    expect(order).toEqual({ id: "o1", storeId: "s1" });
+  });
+
+  it("should allow creator list filters to pass through to the store query", async () => {
+    (db.query.stores.findFirst as any).mockResolvedValue({
+      id: "s1",
+    });
+
+    (orderDb.listByStore as any).mockResolvedValue([
+      { id: "o1", status: "PAID" },
+    ]);
+
+    const orders = await orderService.listOrdersForCreator("user1", {
+      status: "PAID",
+      from: "2025-01-01",
+      to: "2025-01-31",
+    });
+
+    expect(orderDb.listByStore).toHaveBeenCalledWith("s1", {
+      status: "PAID",
+      from: "2025-01-01",
+      to: "2025-01-31",
+    });
+    expect(orders).toEqual([{ id: "o1", status: "PAID" }]);
+  });
 });
 
 /* =========================================================

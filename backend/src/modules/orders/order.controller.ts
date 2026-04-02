@@ -1,3 +1,4 @@
+import { ApiError } from "../shared/api-error";
 import { orderService } from "./order.service";
 
 export const orderController = {
@@ -12,11 +13,28 @@ export const orderController = {
   },
 
   list: async (req: any, res: any) => {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const from = typeof req.query.from === "string" ? req.query.from : undefined;
+    const to = typeof req.query.to === "string" ? req.query.to : undefined;
+
     const orders = await orderService.listOrdersForCreator(
-      req.user.id
+      req.user.id,
+      { status, from, to }
     );
 
     res.json({ success: true, data: orders, error: null });
+  },
+
+  getById: async (req: any, res: any) => {
+    const orderId = req.params.id;
+    if (typeof orderId !== "string") throw new ApiError(400, "Invalid order id");
+
+    const order = await orderService.getOrderForCreator(
+      req.user.id,
+      orderId
+    );
+
+    res.json({ success: true, data: order, error: null });
   },
 
   listForBuyer: async (req: any, res: any) => {

@@ -213,17 +213,41 @@ export const orderService = {
 
   /* ================= LIST ================= */
 
-  async listOrdersForCreator(userId: string) {
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.userId, userId),
-  });
+  async listOrdersForCreator(
+    userId: string,
+    filters?: {
+      status?: OrderStatus;
+      from?: string;
+      to?: string;
+    }
+  ) {
+    const store = await db.query.stores.findFirst({
+      where: eq(stores.userId, userId),
+    });
 
-  if (!store) {
-    throw new ApiError(404, "Store not found for this user");
-  }
+    if (!store) {
+      throw new ApiError(404, "Store not found for this user");
+    }
 
-  return orderDb.listByStore(store.id);
-},
+    return orderDb.listByStore(store.id, filters);
+  },
+
+  async getOrderForCreator(userId: string, orderId: string) {
+    const store = await db.query.stores.findFirst({
+      where: eq(stores.userId, userId),
+    });
+
+    if (!store) {
+      throw new ApiError(404, "Store not found for this user");
+    }
+
+    const order = await orderDb.findById(orderId);
+    if (!order || order.storeId !== store.id) {
+      throw new ApiError(404, "Order not found");
+    }
+
+    return order;
+  },
 
   async listOrdersForBuyer(userId: string) {
     const orders = await orderDb.listByBuyer(userId);

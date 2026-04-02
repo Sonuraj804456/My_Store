@@ -20,6 +20,8 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      - TMPDIR=/app/.tmp
     depends_on:
       - db
     ports:

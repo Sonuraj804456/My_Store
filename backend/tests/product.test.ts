@@ -36,6 +36,7 @@ describe("Product Module - Mandatory Tests", () => {
       name: "Test Store",
       username: `store-${Date.now()}`,
       userId: insertedUser[0].id,
+      isPublic: true,
     }).returning();
 
     storeId = insertedStore[0].id;
@@ -131,6 +132,10 @@ it("should return only published products publicly", async () => {
 
   expect(publicProducts.length).toBe(1);
   expect(publicProducts[0].title).toBe("Hidden Product");
+  expect(publicProducts[0].variants).toBeDefined();
+  expect(publicProducts[0].variants.length).toBe(1);
+  expect(publicProducts[0].media).toBeDefined();
+  expect(publicProducts[0].media.length).toBe(1);
 });
   /* =====================================================
      4️⃣ Category Uniqueness Per Store

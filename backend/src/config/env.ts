@@ -18,15 +18,10 @@ if (process.env.NODE_ENV === "test") {
   }
 }
 
-if (!process.env.BETTER_AUTH_SECRET && process.env.BETTERAUTH_SECRET) {
-  process.env.BETTER_AUTH_SECRET = process.env.BETTERAUTH_SECRET;
-}
-
 export const envSchema = z
   .object({
     DATABASE_URL: z.string().url(),
-    BETTER_AUTH_SECRET: z.string().min(1).optional(),
-    BETTERAUTH_SECRET: z.string().min(1).optional(),
+    BETTER_AUTH_SECRET: z.string().min(1),
     BETTER_AUTH_URL: z.string().url().optional(),
     ADMIN_EMAIL: z.string().email().optional(),
     ADMIN_PASSWORD: z.string().min(1).optional(),
@@ -34,14 +29,7 @@ export const envSchema = z
     NODE_ENV: z.enum(["development", "production", "test"]),
     PLATFORM_COMMISSION_PERCENT: z.string().optional(),
     PAYOUT_HOLD_DAYS: z.string().optional(),
-  })
-  .refine(
-    (data) => Boolean(data.BETTER_AUTH_SECRET || data.BETTERAUTH_SECRET),
-    {
-      message: "BETTER_AUTH_SECRET is required",
-      path: ["BETTER_AUTH_SECRET"],
-    }
-  );
+  });
 
 const parsed = envSchema.safeParse(process.env);
 
@@ -53,14 +41,10 @@ if (!parsed.success) {
   }
 }
 
-const resolvedSecret = parsed.success
-  ? parsed.data.BETTER_AUTH_SECRET ?? parsed.data.BETTERAUTH_SECRET
-  : undefined;
-
 export const env = parsed.success
   ? {
       ...parsed.data,
-      BETTER_AUTH_SECRET: resolvedSecret!,
+      BETTER_AUTH_SECRET: parsed.data.BETTER_AUTH_SECRET,
     }
   : {
       DATABASE_URL:

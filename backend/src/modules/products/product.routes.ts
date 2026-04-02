@@ -3,6 +3,15 @@ import * as controller from "./product.controller";
 import { requireAuth } from "../auth/auth.middleware";
 import { requireRole } from "../auth/requireRole";
 import { Roles } from "../types/roles";
+import { validateBody } from "../shared/validate-body";
+import {
+  createProductSchema,
+  updateProductSchema,
+  createCategorySchema,
+  createVariantSchema,
+  updateVariantSchema,
+  createMediaSchema,
+} from "./product.schema";
 
 const router: Router = Router();
 
@@ -28,23 +37,47 @@ router.use(requireAuth);
 router.use(requireRole(Roles.CREATOR));
 
 /* Categories */
-router.post("/categories", controller.createCategory);
+router.post(
+  "/categories",
+  validateBody(createCategorySchema),
+  controller.createCategory
+);
 router.get("/categories", controller.listCategories);
 
 /* Products */
-router.post("/", controller.createProduct);
+router.post(
+  "/",
+  validateBody(createProductSchema),
+  controller.createProduct
+);
 router.get("/", controller.getOwnProducts);
 router.get("/:id", controller.getSingleProduct);
-router.patch("/:id", controller.updateProduct);
+router.patch(
+  "/:id",
+  validateBody(updateProductSchema),
+  controller.updateProduct
+);
 router.delete("/:id", controller.deleteProduct);
 
 /* Variants */
-router.post("/:id/variants", controller.addVariant);
-router.patch("/:id/variants/:variantId", controller.updateVariant);
+router.post(
+  "/:id/variants",
+  validateBody(createVariantSchema),
+  controller.addVariant
+);
+router.patch(
+  "/:id/variants/:variantId",
+  validateBody(updateVariantSchema),
+  controller.updateVariant
+);
 router.delete("/:id/variants/:variantId", controller.deleteVariant);
 
 /* Media */
-router.post("/:id/media", controller.addMedia);
+router.post(
+  "/:id/media",
+  validateBody(createMediaSchema),
+  controller.addMedia
+);
 router.delete("/:id/media/:mediaId", controller.removeMedia);
 
 export default router;

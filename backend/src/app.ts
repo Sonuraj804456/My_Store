@@ -30,17 +30,6 @@ app.use(
    API ROUTES
 ========================= */
 
-app.use("/v1/api/auth", authRoutes);
-app.use("/v1/api/users", userRoutes);
-app.use("/v1/api/stores", storeRoutes);
-app.use("/v1/api/products", productRoutes);
-app.use("/v1/api", productPublicRoutes);
-app.use("/v1/api", orderRoutes); // 👈 ADD THIS
-app.use("/v1/api", messageRoutes);
-app.use("/v1/api", downloadRoutes);
-app.use("/v1/api", payoutRoutes);
-app.use("/v1/api/admin", adminStoreRoutes);
-
 app.get("/v1/api/health", async (_req, res) => {
   let dbStatus = "disconnected";
 
@@ -58,6 +47,17 @@ app.get("/v1/api/health", async (_req, res) => {
     version: "v1",
   });
 });
+
+app.use("/v1/api/auth", authRoutes);
+app.use("/v1/api/users", userRoutes);
+app.use("/v1/api/stores", storeRoutes);
+app.use("/v1/api/products", productRoutes);
+app.use("/v1/api", productPublicRoutes);
+app.use("/v1/api", orderRoutes); // 👈 ADD THIS
+app.use("/v1/api", messageRoutes);
+app.use("/v1/api", downloadRoutes);
+app.use("/v1/api", payoutRoutes);
+app.use("/v1/api/admin", adminStoreRoutes);
 
 /* =========================
    ERROR HANDLER

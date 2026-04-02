@@ -146,6 +146,7 @@ describe("Message module", () => {
       id: "c1",
       orderId: "o1",
       buyerEmail: "test@mail.com",
+      isDisputed: false,
     });
 
     (orderDb.findById as any).mockResolvedValue({
@@ -163,6 +164,27 @@ describe("Message module", () => {
     expect(messageDb.setDispute).toHaveBeenCalledWith("c1", true);
   });
 
+  it("should reject escalation when conversation is already disputed", async () => {
+    (messageDb.findConversationById as any).mockResolvedValue({
+      id: "c1",
+      orderId: "o1",
+      buyerEmail: "test@mail.com",
+      isDisputed: true,
+    });
+
+    (orderDb.findById as any).mockResolvedValue({
+      id: "o1",
+      buyerEmail: "test@mail.com",
+      buyerPhone: "9999999999",
+      status: "PAID",
+    });
+
+    await expect(
+      messageService.escalateDispute("c1", "o1", "test@mail.com", "9999999999")
+    ).rejects.toThrow(ApiError);
+    expect(messageDb.setDispute).not.toHaveBeenCalled();
+  });
+
   it("should resolve dispute as admin", async () => {
     (messageDb.findConversationById as any).mockResolvedValue({ id: "c1", isDisputed: true });
     (messageDb.setDispute as any).mockResolvedValue({ isDisputed: false });
@@ -171,6 +193,15 @@ describe("Message module", () => {
 
     expect(messageDb.setDispute).toHaveBeenCalledWith("c1", false);
     expect(result.isDisputed).toBe(false);
+  });
+
+  it("should reject resolveDispute when conversation is not disputed", async () => {
+    (messageDb.findConversationById as any).mockResolvedValue({ id: "c1", isDisputed: false });
+
+    await expect(
+      messageService.resolveDispute("c1")
+    ).rejects.toThrow(ApiError);
+    expect(messageDb.setDispute).not.toHaveBeenCalled();
   });
 
   it("should soft-delete message and return updated record", async () => {
