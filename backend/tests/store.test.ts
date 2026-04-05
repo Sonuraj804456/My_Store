@@ -6,6 +6,9 @@ import { ApiError } from "../src/modules/shared/api-error";
 vi.mock("../src/config/db", () => {
   const mockDb = {
     query: {
+      merchants: {
+        findFirst: vi.fn(),
+      },
       stores: {
         findFirst: vi.fn(),
         findMany: vi.fn(),
@@ -21,7 +24,7 @@ vi.mock("../src/config/db", () => {
 // ---- HELPER FUNCTIONS ----
 const mockStore = (overrides?: Partial<any>) => ({
   id: "store-123",
-  userId: "user-123",
+  merchantId: "merchant-123",
   username: "teststore",
   name: "Test Store",
   description: "A test store",
@@ -68,31 +71,47 @@ describe("Store Service", () => {
         bannerUrl: "https://example.com/banner.jpg",
       };
 
-      const createdStore = mockStore({
+      const merchantRecord = {
+        id: "merchant-123",
         userId,
+      };
+
+      const createdStore = mockStore({
+        merchantId: merchantRecord.id,
         ...storeData,
       });
 
+      db.query.merchants.findFirst.mockResolvedValueOnce(null);
       db.query.stores.findFirst.mockResolvedValueOnce(null); // No existing store
       db.query.stores.findFirst.mockResolvedValueOnce(null); // Username not taken
-      db.insert.mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValueOnce([createdStore]),
-        }),
-      });
+
+      db.insert
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValueOnce([merchantRecord]),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValueOnce([createdStore]),
+          }),
+        }));
 
       const result = await storeService.createStore(userId, storeData);
 
+      expect(db.insert).toHaveBeenCalledTimes(2);
       expect(result).toEqual(createdStore);
-      expect(result.userId).toBe(userId);
+      expect(result.merchantId).toBe("merchant-123");
       expect(result.username).toBe("mystore");
       expect(result.name).toBe("My Store");
     });
 
     it("should reject creation if user already owns a store", async () => {
       const userId = "user-123";
-      const existingStore = mockStore({ userId });
+      const merchantRecord = { id: userId, userId };
+      const existingStore = mockStore({ merchantId: userId });
 
+      db.query.merchants.findFirst.mockResolvedValueOnce(merchantRecord);
       db.query.stores.findFirst.mockResolvedValueOnce(existingStore);
 
       const storeData = {
@@ -107,8 +126,10 @@ describe("Store Service", () => {
 
     it("should reject creation if username is already taken", async () => {
       const userId = "user-123";
+      const merchantRecord = { id: "merchant-123", userId };
       const existingStore = mockStore({ username: "taken-username" });
 
+      db.query.merchants.findFirst.mockResolvedValueOnce(merchantRecord);
       db.query.stores.findFirst
         .mockResolvedValueOnce(null) // No existing store for user
         .mockResolvedValueOnce(existingStore); // Username already taken
@@ -130,9 +151,10 @@ describe("Store Service", () => {
   describe("One store per user rule", () => {
     it("should enforce that a user can only own one store", async () => {
       const userId = "user-123";
-      const firstStore = mockStore({ userId });
+      const merchantRecord = { id: userId, userId };
+      const firstStore = mockStore({ merchantId: userId });
 
-      // First store exists
+      db.query.merchants.findFirst.mockResolvedValueOnce(merchantRecord);
       db.query.stores.findFirst.mockResolvedValueOnce(firstStore);
 
       const secondStoreData = {
@@ -157,8 +179,13 @@ describe("Store Service", () => {
         name: "New Store",
       };
 
-      const newStore = mockStore({
+      const merchantRecord = {
+        id: "merchant-456",
         userId,
+      };
+
+      const newStore = mockStore({
+        merchantId: merchantRecord.id,
         username: "newstore",
         name: "New Store",
       });
@@ -167,15 +194,22 @@ describe("Store Service", () => {
         .mockResolvedValueOnce(null) // No existing store
         .mockResolvedValueOnce(null); // Username available
 
-      db.insert.mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValueOnce([newStore]),
-        }),
-      });
+      db.insert
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValueOnce([merchantRecord]),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValueOnce([newStore]),
+          }),
+        }));
 
       const result = await storeService.createStore(userId, storeData);
 
-      expect(result.userId).toBe(userId);
+      expect(db.insert).toHaveBeenCalledTimes(2);
+      expect(result.merchantId).toBe("merchant-456");
     });
   });
 
@@ -185,8 +219,10 @@ describe("Store Service", () => {
   describe("Username permanence", () => {
     it("should allow updating store metadata but not username", async () => {
       const userId = "user-123";
-      const store = mockStore({ userId });
+      const merchantRecord = { id: "merchant-123", userId };
+      const store = mockStore({ merchantId: merchantRecord.id });
 
+      db.query.merchants.findFirst.mockResolvedValueOnce(merchantRecord);
       db.query.stores.findFirst.mockResolvedValueOnce(store);
 
       const updates = {
@@ -310,8 +346,10 @@ describe("Store Service", () => {
   describe("Soft delete and admin restore", () => {
     it("should soft delete store (set deletedAt)", async () => {
       const userId = "user-123";
-      const store = mockStore({ userId, deletedAt: null });
+      const merchantRecord = { id: "merchant-123", userId };
+      const store = mockStore({ merchantId: merchantRecord.id, deletedAt: null });
 
+      db.query.merchants.findFirst.mockResolvedValueOnce(merchantRecord);
       db.query.stores.findFirst.mockResolvedValueOnce(store);
 
       db.update.mockReturnValue({
@@ -328,8 +366,10 @@ describe("Store Service", () => {
 
     it("should not be able to soft delete already deleted store", async () => {
       const userId = "user-123";
-      const deletedStore = mockStore({ userId, deletedAt: new Date() });
+      const merchantRecord = { id: "merchant-123", userId };
+      const deletedStore = mockStore({ merchantId: merchantRecord.id, deletedAt: new Date() });
 
+      db.query.merchants.findFirst.mockResolvedValueOnce(merchantRecord);
       db.query.stores.findFirst.mockResolvedValueOnce(null); // Already deleted, isNull check fails
 
       await expect(storeService.softDeleteStore(userId)).rejects.toThrow(
@@ -349,6 +389,12 @@ describe("Store Service", () => {
           where: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValueOnce([restoredStore]),
           }),
+        }),
+      });
+
+      db.insert.mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValueOnce([{ id: "audit-1" }]),
         }),
       });
 
@@ -463,6 +509,18 @@ describe("Store Service", () => {
         }),
       });
 
+      db.insert
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValueOnce([{ id: "audit-suspend-1" }]),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValueOnce([{ id: "audit-unsuspend-1" }]),
+          }),
+        }));
+
       const resultSuspend = await storeService.adminSuspendStore(storeId, "policy violation", "admin-1");
       expect(resultSuspend.isSuspended).toBe(true);
 
@@ -487,8 +545,10 @@ describe("Store Service", () => {
   describe("Edge cases", () => {
     it("should handle vacation mode independently of visibility", async () => {
       const userId = "user-123";
-      const store = mockStore({ userId, isPublic: true, isVacationMode: false, isSuspended: false });
+      const merchantRecord = { id: "merchant-123", userId };
+      const store = mockStore({ merchantId: merchantRecord.id, isPublic: true, isVacationMode: false, isSuspended: false });
 
+      db.query.merchants.findFirst.mockResolvedValueOnce(merchantRecord);
       db.query.stores.findFirst.mockResolvedValueOnce(store);
 
       const updates = { isVacationMode: true };

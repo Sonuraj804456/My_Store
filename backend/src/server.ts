@@ -21,11 +21,8 @@ async function seedAdmin() {
   }
 
   if (existing) {
-    // Ensure existing user has ADMIN role
-    if ((existing as any).role !== "ADMIN") {
-      await userService.setRoleByEmail(email, "ADMIN");
-      console.log("Admin role updated for existing user:", email);
-    }
+    console.log("Admin user already exists:", email);
+    console.log("Note: Admin access is controlled via ADMIN_USER_IDS environment variable");
     return;
   }
 
@@ -39,9 +36,8 @@ async function seedAdmin() {
     });
 
     if (result) {
-      // After signup, set the role to ADMIN (default is CREATOR)
-      await userService.setRoleByEmail(email, "ADMIN");
       console.log("Admin user created:", email);
+      console.log("Note: Add this user's ID to ADMIN_USER_IDS environment variable to grant admin access");
     }
   } catch (error) {
     console.error("Error creating admin user:", error);

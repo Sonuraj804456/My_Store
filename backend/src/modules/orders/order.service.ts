@@ -5,6 +5,7 @@ import { jobDb } from "../jobs/job.db";
 import { db } from "../../config/db";
 import { products, productVariants } from "../products/product.db";
 import { stores } from "../stores/store.db";
+import { customers, merchants } from "../auth/auth.schema";
 import { downloadService } from "../download/download.service";
 import { adminAuditService } from "../admin/admin-audit.service";
 import { eq, and, isNull } from "drizzle-orm";
@@ -36,6 +37,30 @@ function validateTransition(
   }
 }
 
+const findStoreForCreator = async (userId: string) => {
+  if (db.query.merchants?.findFirst) {
+    const merchant = await db.query.merchants.findFirst({
+      where: eq(merchants.userId, userId),
+    });
+
+    if (merchant) {
+      return db.query.stores.findFirst({
+        where: and(
+          eq(stores.merchantId, merchant.id),
+          isNull(stores.deletedAt)
+        ),
+      });
+    }
+  }
+
+  return db.query.stores.findFirst({
+    where: and(
+      eq(stores.merchantId, userId),
+      isNull(stores.deletedAt)
+    ),
+  });
+};
+
 const handleStatusChangeToPaid = async (orderId: string) => {
   const order = await orderDb.findById(orderId);
   if (!order) return;
@@ -59,14 +84,14 @@ const handleStatusChangeToDelivered = async (order: any) => {
   if (!order) return;
   await payoutService.createPayoutForOrder(order);
 
-  // Create EMAIL job to notify buyer
+  // Create EMAIL job to notify customer
   try {
-    const buyer = await orderDb.findBuyerById(order.buyerId);
-    if (buyer) {
+    const customer = await orderDb.findBuyerById(order.customerId);
+    if (customer) {
       await jobDb.create({
         type: "EMAIL",
         payload: {
-          to: buyer.email,
+          to: customer.email,
           template: "ORDER_STATUS_UPDATED",
           data: {
             orderId: order.id,
@@ -139,25 +164,24 @@ export const orderService = {
       throw new ApiError(400, "Store not accepting orders");
     }
 
-    /* -------- Resolve Buyer -------- */
+    /* -------- Resolve/Create Customer -------- */
 
-    let buyer = await orderDb.findBuyer(
+    let customer = await orderDb.findBuyer(
       data.buyerEmail,
       data.buyerPhone
     );
 
-    if (!buyer) {
-      const createdBuyer = await orderDb.createBuyer({
+    if (!customer) {
+      customer = await orderDb.createBuyer({
         email: data.buyerEmail,
         phone: data.buyerPhone,
         name: data.buyerName,
+        userId: undefined, // Guest customer (not logged in)
       });
 
-      if (!createdBuyer.length) {
-        throw new ApiError(500, "Failed to create buyer");
+      if (!customer) {
+        throw new ApiError(500, "Failed to create customer");
       }
-
-      buyer = createdBuyer[0]!;
     }
 
     /* -------- Price Freeze -------- */
@@ -172,7 +196,7 @@ export const orderService = {
       storeId: store.id,
       priceAtPurchase,
       totalAmount,
-      buyerId: buyer.id,
+      customerId: customer.id,
       status: "PENDING" as OrderStatus,
     });
 
@@ -182,7 +206,7 @@ export const orderService = {
 
     const order = createdOrder[0]!;
 
-    // Create EMAIL job to notify buyer
+    // Create EMAIL job to notify customer
     try {
       await jobDb.create({
         type: "EMAIL",
@@ -221,9 +245,7 @@ export const orderService = {
       to?: string;
     }
   ) {
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.userId, userId),
-    });
+    const store = await findStoreForCreator(userId);
 
     if (!store) {
       throw new ApiError(404, "Store not found for this user");
@@ -232,10 +254,19 @@ export const orderService = {
     return orderDb.listByStore(store.id, filters);
   },
 
+  async listOrdersForMerchant(
+    userId: string,
+    filters?: {
+      status?: OrderStatus;
+      from?: string;
+      to?: string;
+    }
+  ) {
+    return this.listOrdersForCreator(userId, filters);
+  },
+
   async getOrderForCreator(userId: string, orderId: string) {
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.userId, userId),
-    });
+    const store = await findStoreForCreator(userId);
 
     if (!store) {
       throw new ApiError(404, "Store not found for this user");
@@ -249,8 +280,21 @@ export const orderService = {
     return order;
   },
 
+  async getOrderForMerchant(userId: string, orderId: string) {
+    return this.getOrderForCreator(userId, orderId);
+  },
+
   async listOrdersForBuyer(userId: string) {
-    const orders = await orderDb.listByBuyer(userId);
+    // Find customer record for this user
+    const customer = await db.query.customers.findFirst({
+      where: eq(customers.userId, userId),
+    });
+
+    if (!customer) {
+      return []; // No customer record means no orders
+    }
+
+    const orders = await orderDb.listByCustomer(customer.id);
 
     // For each order, if it's paid and digital product, include download token
     const ordersWithDownloads = await Promise.all(
@@ -281,49 +325,46 @@ export const orderService = {
   /* ================= STATUS UPDATE ================= */
 
   async updateStatusCreator(
-  orderId: string,
-  status: OrderStatus,
-  userId: string
-) {
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.userId, userId),
-  });
+    orderId: string,
+    status: OrderStatus,
+    userId: string
+  ) {
+    const store = await findStoreForCreator(userId);
 
-  if (!store) {
-    throw new ApiError(404, "Store not found");
-  }
+    if (!store) {
+      throw new ApiError(404, "Store not found for this user");
+    }
 
-  if (store.isSuspended) {
-    throw new ApiError(403, "Store is suspended");
-  }
+    const order = await orderDb.findById(orderId);
 
-  const order = await orderDb.findById(orderId);
+    if (!order) {
+      throw new ApiError(404, "Order not found");
+    }
 
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
+    if (order.storeId !== store.id) {
+      throw new ApiError(403, "Access denied");
+    }
 
-  if (order.storeId !== store.id) {
-    throw new ApiError(403, "Access denied");
-  }
+    if (store.isSuspended) {
+      throw new ApiError(403, "Store is suspended");
+    }
 
-  validateTransition(order.status as OrderStatus, status);
+    validateTransition(order.status as OrderStatus, status);
 
-  await orderDb.updateStatus(orderId, status);
+    await orderDb.updateStatus(orderId, status);
 
-  if (status === "PAID") {
-    await handleStatusChangeToPaid(orderId);
-  }
+    if (status === "PAID") {
+      await handleStatusChangeToPaid(orderId);
+    }
 
-  if (status === "DELIVERED") {
-    await handleStatusChangeToDelivered(order);
-  }
+    if (status === "DELIVERED") {
+      await handleStatusChangeToDelivered(order);
+    }
 
-  if (status === "CANCELLED" || status === "RETURNED") {
-    await handleStatusChangeToCancelledOrReturned(order);
-  }
-},
-
+    if (status === "CANCELLED" || status === "RETURNED") {
+      await handleStatusChangeToCancelledOrReturned(order);
+    }
+  },
 
   async updateStatusAdmin(
     orderId: string,
@@ -371,12 +412,10 @@ export const orderService = {
       throw new ApiError(404, "Order not found");
     }
 
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.userId, userId),
-    });
+    const store = await findStoreForCreator(userId);
 
     if (!store) {
-      throw new ApiError(404, "Store not found");
+      throw new ApiError(403, "Access denied");
     }
 
     if (order.storeId !== store.id) {

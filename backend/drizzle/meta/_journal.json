@@ -50,6 +50,13 @@
       "when": 1774624106015,
       "tag": "0006_ordinary_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775386440737,
+      "tag": "0007_dizzy_dreaming_celestial",
+      "breakpoints": true
     }
   ]
 }

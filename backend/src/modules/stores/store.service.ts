@@ -1,4 +1,5 @@
 import { stores } from "./store.db";
+import { merchants } from "../auth/auth.schema";
 import { payouts } from "../payout/payout.db";
 import { and, eq, isNull, not } from "drizzle-orm";
 import { ApiError } from "../shared/api-error";
@@ -15,8 +16,27 @@ export async function createStore(
     bannerUrl?: string;
   }
 ) {
+  // Step 1: Ensure merchant exists for this user
+  let merchant = await db.query.merchants.findFirst({
+    where: eq(merchants.userId, userId),
+  });
+
+  if (!merchant) {
+    // Create merchant if it doesn't exist
+    const [newMerchant] = await db
+      .insert(merchants)
+      .values({ userId })
+      .returning();
+    merchant = newMerchant;
+  }
+
+  if (!merchant) {
+    throw new ApiError(500, "Failed to create merchant");
+  }
+
+  // Step 2: Check if merchant already has a store
   const existingStore = await db.query.stores.findFirst({
-    where: eq(stores.userId, userId),
+    where: eq(stores.merchantId, merchant.id),
   });
 
   if (existingStore) {
@@ -35,7 +55,7 @@ export async function createStore(
     const [store] = await db
       .insert(stores)
       .values({
-        userId,
+        merchantId: merchant.id,
         ...data,
       })
       .returning();
@@ -49,7 +69,7 @@ export async function createStore(
       if (constraint.includes("username") || (err.detail && err.detail.includes("username"))) {
         throw new ApiError(409, "Username already taken");
       }
-      if (constraint.includes("user_id") || (err.detail && err.detail.includes("user_id"))) {
+      if (constraint.includes("merchant_id") || (err.detail && err.detail.includes("merchant_id"))) {
         throw new ApiError(409, "User already owns a store");
       }
       // Generic unique violation fallback
@@ -61,9 +81,17 @@ export async function createStore(
 }
 
 export async function getOwnStore(userId: string) {
+  const merchant = await db.query.merchants.findFirst({
+    where: eq(merchants.userId, userId),
+  });
+
+  if (!merchant) {
+    throw new ApiError(404, "Merchant not found");
+  }
+
   const store = await db.query.stores.findFirst({
     where: and(
-      eq(stores.userId, userId),
+      eq(stores.merchantId, merchant.id),
       isNull(stores.deletedAt)
     ),
   });
@@ -88,9 +116,17 @@ export async function updateOwnStore(
     announcementEnabled: boolean;
   }>
 ) {
+  const merchant = await db.query.merchants.findFirst({
+    where: eq(merchants.userId, userId),
+  });
+
+  if (!merchant) {
+    throw new ApiError(404, "Merchant not found");
+  }
+
   const store = await db.query.stores.findFirst({
     where: and(
-      eq(stores.userId, userId),
+      eq(stores.merchantId, merchant.id),
       isNull(stores.deletedAt)
     ),
   });
@@ -117,7 +153,7 @@ export async function updateOwnStore(
       if (constraint.includes("username") || (err.detail && err.detail.includes("username"))) {
         throw new ApiError(409, "Username already taken");
       }
-      if (constraint.includes("user_id") || (err.detail && err.detail.includes("user_id"))) {
+      if (constraint.includes("merchant_id") || (err.detail && err.detail.includes("merchant_id"))) {
         throw new ApiError(409, "User already owns a store");
       }
       throw new ApiError(409, "Unique constraint violation");
@@ -129,9 +165,17 @@ export async function updateOwnStore(
 }
 
 export async function softDeleteStore(userId: string) {
+  const merchant = await db.query.merchants.findFirst({
+    where: eq(merchants.userId, userId),
+  });
+
+  if (!merchant) {
+    throw new ApiError(404, "Merchant not found");
+  }
+
   const store = await db.query.stores.findFirst({
     where: and(
-      eq(stores.userId, userId),
+      eq(stores.merchantId, merchant.id),
       isNull(stores.deletedAt)
     ),
   });

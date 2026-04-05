@@ -1,20 +1,18 @@
 import { Router } from "express";
 import * as payoutController from "./payout.controller";
-import { requireAuth } from "../auth/auth.middleware";
-import { requireRole } from "../auth/requireRole";
-import { Roles } from "../types/roles";
+import { requireAuth, requireMerchant, requireAdmin } from "../auth/auth.middleware";
 
 const router: Router = Router();
 
 router.use(requireAuth);
 
-router.get("/payouts", requireRole(Roles.CREATOR), payoutController.listPayouts);
-router.get("/payouts/summary", requireRole(Roles.CREATOR), payoutController.getSummary);
+router.get("/payouts", requireMerchant, payoutController.listPayouts);
+router.get("/payouts/summary", requireMerchant, payoutController.getSummary);
 
-router.get("/admin/payouts", requireRole(Roles.ADMIN), payoutController.adminListPayouts);
-router.patch("/admin/payouts/:id/release", requireRole(Roles.ADMIN), payoutController.adminReleasePayout);
-router.patch("/admin/payouts/:id/cancel", requireRole(Roles.ADMIN), payoutController.adminCancelPayout);
-router.patch("/admin/payouts/:id/freeze", requireRole(Roles.ADMIN), payoutController.adminFreezePayout);
-router.patch("/admin/payouts/:id/unfreeze", requireRole(Roles.ADMIN), payoutController.adminUnfreezePayout);
+router.get("/admin/payouts", requireAdmin, payoutController.adminListPayouts);
+router.patch("/admin/payouts/:id/release", requireAdmin, payoutController.adminReleasePayout);
+router.patch("/admin/payouts/:id/cancel", requireAdmin, payoutController.adminCancelPayout);
+router.patch("/admin/payouts/:id/freeze", requireAdmin, payoutController.adminFreezePayout);
+router.patch("/admin/payouts/:id/unfreeze", requireAdmin, payoutController.adminUnfreezePayout);
 
 export default router;

@@ -2,13 +2,11 @@ import { Router } from "express";
 import * as controller from "./store.controller";
 import { validateBody } from "../shared/validate-body";
 import { suspendStoreSchema } from "./store.schema";
-import { requireAuth } from "../auth/auth.middleware";
-import { requireRole } from "../auth/requireRole";
-import { Roles } from "../types/roles";
+import { requireAuth, requireAdmin } from "../auth/auth.middleware";
 
 const router: Router = Router();
 
-router.use(requireAuth, requireRole(Roles.ADMIN));
+router.use(requireAuth, requireAdmin);
 
 // GET /v1/api/admin/stores
 router.get("/stores", controller.adminListStores);

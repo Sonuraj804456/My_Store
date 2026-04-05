@@ -4,9 +4,9 @@ import { db } from "../../config/db";
 import { products, productMedia } from "../products/product.db";
 import { digitalDownloads, downloadDb, downloadLogs } from "./download.db";
 import { orders } from "../orders/order.db";
-import { Roles } from "../types/roles";
 import { and, eq } from "drizzle-orm";
 import { stores } from "../stores/store.db";
+import { customers, merchants } from "../auth/auth.schema";
 
 const toHexToken = () => crypto.randomBytes(32).toString("hex");
 
@@ -104,12 +104,20 @@ export const downloadService = {
   },
 
   listByProductForCreator: async (userId: string, productId: string) => {
+    const merchant = await db.query.merchants.findFirst({
+      where: eq(merchants.userId, userId),
+    });
+
+    if (!merchant) {
+      throw new ApiError(404, "Merchant not found for this user");
+    }
+
     const store = await db.query.stores.findFirst({
-      where: eq(stores.userId, userId),
+      where: eq(stores.merchantId, merchant.id),
     });
 
     if (!store) {
-      throw new ApiError(404, "Store not found for this user");
+      throw new ApiError(404, "Store not found for this merchant");
     }
 
     const product = await db.query.products.findFirst({
@@ -126,7 +134,7 @@ export const downloadService = {
     return downloadDb.listByProductId(productId);
   },
 
-  getTokenForUser: async (user: { id: string; role: string }, orderId: string) => {
+  getTokenForUser: async (user: { id: string }, orderId: string) => {
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
     });
@@ -134,21 +142,37 @@ export const downloadService = {
     if (!order) throw new ApiError(404, "Order not found");
     if (order.status !== "PAID") throw new ApiError(400, "Order not paid");
 
-    if (user.role === Roles.BUYER) {
-      if (order.buyerId !== user.id) throw new ApiError(403, "Forbidden");
-    } else if (user.role === Roles.CREATOR) {
-      const product = await db.query.products.findFirst({
-        where: eq(products.id, order.productId),
-      });
-      if (!product) throw new ApiError(404, "Product not found");
+    // Check if user is a customer who owns this order
+    const customer = await db.query.customers.findFirst({
+      where: eq(customers.userId, user.id),
+    });
 
-      const store = await db.query.stores.findFirst({
-        where: eq(stores.id, product.storeId),
+    if (customer && order.customerId === customer.id) {
+      // User is a customer and owns this order
+    } else {
+      // Check if user is a merchant who owns the store
+      const merchant = await db.query.merchants.findFirst({
+        where: eq(merchants.userId, user.id),
       });
-      if (!store) throw new ApiError(404, "Store not found");
-      if (store.userId !== user.id) throw new ApiError(403, "Forbidden");
-    } else if (user.role !== Roles.ADMIN) {
-      throw new ApiError(403, "Forbidden");
+
+      if (merchant) {
+        const product = await db.query.products.findFirst({
+          where: eq(products.id, order.productId),
+        });
+        if (!product) throw new ApiError(404, "Product not found");
+
+        const store = await db.query.stores.findFirst({
+          where: eq(stores.id, product.storeId),
+        });
+        if (!store) throw new ApiError(404, "Store not found");
+        if (store.merchantId !== merchant.id) throw new ApiError(403, "Forbidden");
+      } else {
+        // Check if user is admin
+        const adminUserIds = process.env.ADMIN_USER_IDS?.split(',') || [];
+        if (!adminUserIds.includes(user.id)) {
+          throw new ApiError(403, "Forbidden");
+        }
+      }
     }
 
     const download = await downloadDb.findByOrderId(orderId);

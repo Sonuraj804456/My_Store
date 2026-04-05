@@ -42,7 +42,7 @@ export const downloadController = {
       throw new ApiError(400, "Invalid order id");
 
     const tokenData = await downloadService.getTokenForUser(
-      req.user,
+      { id: req.user!.id },
       orderId
     );
 

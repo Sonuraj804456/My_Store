@@ -6,24 +6,20 @@ import {
   updateStoreSchema,
 } from "./store.schema";
 
-import { requireAuth } from "../auth/auth.middleware";
-import { requireRole } from "../auth/requireRole";
-
-
-import { Roles } from "../types/roles";
+import { requireAuth, requireMerchant } from "../auth/auth.middleware";
 import { validateBody } from "../shared/validate-body";
 
 
 const router: Router = Router();
 
 /* ======================================
-   CREATOR ROUTES
+   MERCHANT ROUTES (store owners)
 ====================================== */
 
 router.post(
   "/",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   validateBody(createStoreSchema),
   controller.createStore
 );
@@ -31,14 +27,14 @@ router.post(
 router.get(
   "/me",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   controller.getOwnStore
 );
 
 router.patch(
   "/me",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   validateBody(updateStoreSchema),
   controller.updateOwnStore
 );
@@ -46,7 +42,7 @@ router.patch(
 router.delete(
   "/me",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   controller.deleteOwnStore
 );
 

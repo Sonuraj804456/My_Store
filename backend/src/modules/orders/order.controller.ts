@@ -17,7 +17,7 @@ export const orderController = {
     const from = typeof req.query.from === "string" ? req.query.from : undefined;
     const to = typeof req.query.to === "string" ? req.query.to : undefined;
 
-    const orders = await orderService.listOrdersForCreator(
+    const orders = await orderService.listOrdersForMerchant(
       req.user.id,
       { status, from, to }
     );
@@ -29,7 +29,7 @@ export const orderController = {
     const orderId = req.params.id;
     if (typeof orderId !== "string") throw new ApiError(400, "Invalid order id");
 
-    const order = await orderService.getOrderForCreator(
+    const order = await orderService.getOrderForMerchant(
       req.user.id,
       orderId
     );

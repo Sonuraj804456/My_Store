@@ -1,8 +1,6 @@
 import { Router } from "express";
 import { orderController } from "./order.controller";
-import { requireRole } from "../auth/requireRole";
-import { Roles } from "../types/roles";
-import { requireAuth } from "../auth/auth.middleware";
+import { requireAuth, requireMerchant, requireAdmin } from "../auth/auth.middleware";
 import { ipRateLimiter } from "../shared/rate-limit";
 import { validateBody } from "../shared/validate-body";
 import {
@@ -22,35 +20,26 @@ router.post(
   orderController.create
 );
 
-/* ================= BUYER ================= */
-
-router.get(
-  "/my-orders",
-  requireAuth,
-  requireRole(Roles.BUYER),
-  orderController.listForBuyer
-);
-
-/* ================= CREATOR ================= */
+/* ================= MERCHANT (store owners) ================= */
 
 router.get(
   "/orders",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   orderController.list
 );
 
 router.get(
   "/orders/:id",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   orderController.getById
 );
 
 router.patch(
   "/orders/:id/status",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   validateBody(updateStatusSchema),
   orderController.updateStatusCreator
 );
@@ -58,7 +47,7 @@ router.patch(
 router.patch(
   "/orders/:id/refund",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   validateBody(refundSchema),
   orderController.markRefund
 );
@@ -68,14 +57,14 @@ router.patch(
 router.get(
   "/admin/orders",
   requireAuth,
-  requireRole(Roles.ADMIN),
+  requireAdmin,
   orderController.listAll
 );
 
 router.patch(
   "/admin/orders/:id/status",
   requireAuth,
-  requireRole(Roles.ADMIN),
+  requireAdmin,
   validateBody(updateStatusSchema),
   orderController.updateStatusAdmin
 );
@@ -83,7 +72,7 @@ router.patch(
 router.delete(
   "/admin/orders/:id",
   requireAuth,
-  requireRole(Roles.ADMIN),
+  requireAdmin,
   orderController.softDelete
 );
 

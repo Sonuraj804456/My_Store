@@ -1,8 +1,6 @@
 import { Router } from "express";
 import * as controller from "./product.controller";
-import { requireAuth } from "../auth/auth.middleware";
-import { requireRole } from "../auth/requireRole";
-import { Roles } from "../types/roles";
+import { requireAuth, requireMerchant } from "../auth/auth.middleware";
 import { validateBody } from "../shared/validate-body";
 import {
   createProductSchema,
@@ -34,7 +32,7 @@ router.get(
 ====================================================== */
 
 router.use(requireAuth);
-router.use(requireRole(Roles.CREATOR));
+router.use(requireMerchant);
 
 /* Categories */
 router.post(

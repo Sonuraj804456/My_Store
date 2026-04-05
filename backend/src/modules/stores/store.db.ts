@@ -13,9 +13,9 @@ export const stores = pgTable("stores", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
 
-  userId: varchar("user_id", { length: 255 })
+  merchantId: uuid("merchant_id")
     .notNull()
-    .unique(), // one store per user
+    .unique(), // one store per merchant
 
   username: varchar("username", { length: 30 })
     .notNull()

@@ -122,6 +122,104 @@ describe("Order Creation", () => {
     expect(result.status).toBe("PENDING");
   });
 
+  it("should reuse existing customer when email and phone already match", async () => {
+    (db.query.products.findFirst as any).mockResolvedValue({
+      id: "p1",
+      storeId: "s1",
+      status: "published",
+    });
+
+    (db.query.productVariants.findFirst as any).mockResolvedValue({
+      id: "v1",
+      price: 100,
+    });
+
+    (db.query.stores.findFirst as any).mockResolvedValue({
+      id: "s1",
+      isPublic: true,
+      isVacationMode: false,
+    });
+
+    (orderDb.findBuyer as any).mockResolvedValue({
+      id: "c1",
+      email: "test@mail.com",
+      phone: "9999999999",
+    });
+
+    (orderDb.create as any).mockResolvedValue([
+      {
+        id: "o1",
+        status: "PENDING",
+      },
+    ]);
+
+    const result = await orderService.createOrder({
+      productId: "p1",
+      variantId: "v1",
+      quantity: 1,
+      buyerEmail: "test@mail.com",
+      buyerPhone: "9999999999",
+      buyerName: "Test Buyer",
+    });
+
+    expect(orderDb.createBuyer).not.toHaveBeenCalled();
+    expect(result.totalAmount).toBe(100);
+    expect(result.status).toBe("PENDING");
+  });
+
+  it("should create a new customer when none exists for buyer email and phone", async () => {
+    (db.query.products.findFirst as any).mockResolvedValue({
+      id: "p1",
+      storeId: "s1",
+      status: "published",
+    });
+
+    (db.query.productVariants.findFirst as any).mockResolvedValue({
+      id: "v1",
+      price: 100,
+    });
+
+    (db.query.stores.findFirst as any).mockResolvedValue({
+      id: "s1",
+      isPublic: true,
+      isVacationMode: false,
+    });
+
+    (orderDb.findBuyer as any).mockResolvedValue(null);
+    (orderDb.createBuyer as any).mockResolvedValue({
+      id: "c2",
+      email: "test@mail.com",
+      phone: "9999999999",
+      name: "Test Buyer",
+    });
+    (orderDb.create as any).mockResolvedValue([
+      {
+        id: "o2",
+        status: "PENDING",
+      },
+    ]);
+
+    const result = await orderService.createOrder({
+      productId: "p1",
+      variantId: "v1",
+      quantity: 1,
+      buyerEmail: "test@mail.com",
+      buyerPhone: "9999999999",
+      buyerName: "Test Buyer",
+    });
+
+    expect(orderDb.createBuyer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "test@mail.com",
+        phone: "9999999999",
+        name: "Test Buyer",
+        userId: undefined,
+      })
+    );
+    expect(result.totalAmount).toBe(100);
+    expect(result.status).toBe("PENDING");
+  });
+
   it("should block order when store is in vacation mode", async () => {
     (db.query.products.findFirst as any).mockResolvedValue({
       id: "p1",
@@ -245,11 +343,11 @@ describe("Lifecycle Transition Validation", () => {
       status: "SHIPPED",
       storeId: "s1",
       totalAmount: 200,
-      buyerId: "buyer1",
+      customerId: "customer1",
     });
 
     (orderDb.findBuyerById as any).mockResolvedValue({
-      id: "buyer1",
+      id: "customer1",
       email: "buyer@example.com",
     });
 
@@ -341,11 +439,11 @@ describe("Admin Override", () => {
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
       status: "PENDING",
-      buyerId: "buyer1",
+      customerId: "customer1",
     });
 
     (orderDb.findBuyerById as any).mockResolvedValue({
-      id: "buyer1",
+      id: "customer1",
       email: "buyer@example.com",
     });
 

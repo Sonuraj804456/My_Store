@@ -1,9 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
-
-import { pgEnum } from "drizzle-orm/pg-core";
-
-export const userRole = pgEnum("user_role", ["ADMIN","CREATOR","BUYER"]);
+import { pgTable, text, timestamp, boolean, index, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -11,13 +7,41 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
-  role: userRole("role").default("CREATOR").notNull(),   // 👈 ADD THIS
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
+// Merchants: Store owners tied to a user
+export const merchants = pgTable("merchants", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [index("idx_merchants_user_id").on(table.userId)]);
+
+// Customers: Buyers, may or may not be logged in
+export const customers = pgTable("customers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [
+  index("idx_customers_user_id").on(table.userId),
+  index("idx_customers_email_phone").on(table.email, table.phone),
+]);
 
 
 export const session = pgTable(
@@ -79,9 +103,33 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const userRelations = relations(user, ({ many }) => ({
+/* ================= RELATIONS ================= */
+
+export const userRelations = relations(user, ({ one, many }) => ({
   sessions: many(session),
   accounts: many(account),
+  merchant: one(merchants, {
+    fields: [user.id],
+    references: [merchants.userId],
+  }),
+  customer: one(customers, {
+    fields: [user.id],
+    references: [customers.userId],
+  }),
+}));
+
+export const merchantRelations = relations(merchants, ({ one }) => ({
+  user: one(user, {
+    fields: [merchants.userId],
+    references: [user.id],
+  }),
+}));
+
+export const customerRelations = relations(customers, ({ one }) => ({
+  user: one(user, {
+    fields: [customers.userId],
+    references: [user.id],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

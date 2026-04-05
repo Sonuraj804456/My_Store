@@ -6,6 +6,7 @@ import { adminAuditService } from "../admin/admin-audit.service";
 import { db } from "../../config/db";
 import { orders } from "../orders/order.db";
 import { stores } from "../stores/store.db";
+import { merchants } from "../auth/auth.schema";
 import { eq } from "drizzle-orm";
 
 const COMMISSION_PERCENT = Number(env.PLATFORM_COMMISSION_PERCENT ?? 10);
@@ -24,7 +25,7 @@ function calculateForGross(gross: number) {
 type Payout = {
   id: string;
   storeId: string;
-  creatorId: string;
+  merchantId: string;
   orderId: string;
   grossAmount: number | string;
   commissionAmount: number | string;
@@ -89,7 +90,7 @@ export const payoutService = {
 
     const created = await payoutDb.create({
       storeId: order.storeId,
-      creatorId: store.userId,
+      merchantId: store.merchantId,
       orderId: order.id,
       grossAmount,
       commissionAmount: commission,
@@ -123,10 +124,19 @@ export const payoutService = {
 
   async getPayoutsForCreator(userId: string, filters: any = {}) {
     if (!userId) {
-      throw new ApiError(400, "Missing creator id");
+      throw new ApiError(400, "Missing user id");
     }
 
-    const all = (await payoutDb.listByCreator(userId)) as Payout[];
+    // Find merchant for this user
+    const merchant = await db.query.merchants.findFirst({
+      where: eq(merchants.userId, userId),
+    });
+
+    if (!merchant) {
+      throw new ApiError(403, "Access denied: not a merchant");
+    }
+
+    const all = (await payoutDb.listByMerchant(merchant.id)) as Payout[];
     const enrichedWithNull = await Promise.all(all.map((p: Payout) => refreshEligibility(p)));
     const enriched = enrichedWithNull.filter((p): p is Payout => p !== null);
 

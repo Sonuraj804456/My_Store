@@ -11,8 +11,8 @@ import { db } from "../../config/db";
 import { eq, and, isNull } from "drizzle-orm";
 
 export const messageSenderRoleEnum = pgEnum("message_sender_role", [
-  "CREATOR",
-  "BUYER",
+  "MERCHANT",
+  "CUSTOMER",
   "ADMIN",
 ]);
 
@@ -20,9 +20,8 @@ export const conversations = pgTable("conversations", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").notNull(),
   storeId: uuid("store_id").notNull(),
-  creatorId: varchar("creator_id", { length: 255 }).notNull(),
-  buyerId: uuid("buyer_id"),
-  buyerEmail: varchar("buyer_email", { length: 255 }).notNull(),
+  merchantId: uuid("merchant_id").notNull(),
+  customerId: uuid("customer_id").notNull(),
   isDisputed: boolean("is_disputed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

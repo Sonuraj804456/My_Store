@@ -9,7 +9,7 @@ import { stores } from "../src/modules/stores/store.db";
 import { products } from "../src/modules/products/product.db";
 import { categories } from "../src/modules/products/product.db";
 import { productVariants } from "../src/modules/products/product.db";
-import { user } from "../src/modules/auth/auth.schema";
+import { user, merchants } from "../src/modules/auth/auth.schema";
 let storeId: string;
 let storeUsername: string;
 
@@ -24,7 +24,10 @@ describe("Product Module - Mandatory Tests", () => {
       id: crypto.randomUUID(),
       name: "Test User",         // ✔️ use real columns only
       email: `test-${Date.now()}@mail.com`,
-      role: "CREATOR",
+    }).returning();
+
+    const insertedMerchant = await db.insert(merchants).values({
+      userId: insertedUser[0].id,
     }).returning();
 
     /* ---------------------------------------------------
@@ -33,9 +36,9 @@ describe("Product Module - Mandatory Tests", () => {
 
     const insertedStore = await db.insert(stores).values({
       id: crypto.randomUUID(),
+      merchantId: insertedMerchant[0].id,
       name: "Test Store",
       username: `store-${Date.now()}`,
-      userId: insertedUser[0].id,
       isPublic: true,
     }).returning();
 
@@ -48,6 +51,7 @@ describe("Product Module - Mandatory Tests", () => {
     await db.delete(products);
     await db.delete(categories);
     await db.delete(stores);
+    await db.delete(merchants);
     await db.delete(user);
   });
 

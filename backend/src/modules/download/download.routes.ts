@@ -1,27 +1,24 @@
 import { Router } from "express";
 import { downloadController } from "./download.controller";
-import { requireAuth } from "../auth/auth.middleware";
-import { requireRole } from "../auth/requireRole";
-import { Roles } from "../types/roles";
+import { requireAuth, requireMerchant, requireAdmin } from "../auth/auth.middleware";
 
 const router: Router = Router();
 
 // public secure link
 router.get("/download/:token", downloadController.publicDownload);
 
-// buyer/creator/admin token introspection
+// customer/merchant/admin token introspection
 router.get(
   "/token/:orderId",
   requireAuth,
   downloadController.getTokenByOrder
 );
 
-// creator-only introspection
-
+// merchant-only introspection (for their product downloads)
 router.get(
   "/products/:id/downloads",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   downloadController.creatorList
 );
 
@@ -29,7 +26,7 @@ router.get(
 router.get(
   "/admin/downloads",
   requireAuth,
-  requireRole(Roles.ADMIN),
+  requireAdmin,
   downloadController.adminList
 );
 

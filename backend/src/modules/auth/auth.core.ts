@@ -32,19 +32,6 @@ export const auth = betterAuth({
     },
   },
 
-  callbacks: {
-    //@ts-ignore
-    jwt: async ({ token, user }) => {
-      token.role = user?.role ?? "CREATOR";
-      return token;
-    },
-    //@ts-ignore
-    session: async ({ session, token }) => {
-      session.user.role = token.role;
-      return session;
-    },
-  },
-
   session: {
     expiresIn: 60 * 60 * 24 * 7,
   },

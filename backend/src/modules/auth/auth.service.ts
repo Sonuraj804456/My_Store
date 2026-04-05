@@ -1,5 +1,5 @@
 import { db } from "../../config/db";
-import { user } from "./auth.schema";
+import { user, merchants, customers } from "./auth.schema";
 import { Pool } from "pg";
 import { eq } from "drizzle-orm";
 
@@ -29,7 +29,23 @@ export const userService = {
     return result.rows[0];
   },
 
-  async setRoleByEmail(email: string, role: 'ADMIN' | 'CREATOR' | 'BUYER') {
-    return await db.update(user).set({ role }).where(eq(user.email, email));
+  async createMerchant(userId: string) {
+    return await db.insert(merchants).values({ userId }).returning();
+  },
+
+  async getMerchantByUserId(userId: string) {
+    return await db.query.merchants.findFirst({
+      where: eq(merchants.userId, userId),
+    });
+  },
+
+  async createCustomer(email: string, phone: string, name: string, userId?: string) {
+    return await db.insert(customers).values({ email, phone, name, userId }).returning();
+  },
+
+  async getCustomerByEmailAndPhone(email: string, phone: string) {
+    return await db.query.customers.findFirst({
+      where: (cust) => eq(cust.email, email) && eq(cust.phone, phone),
+    });
   },
 };

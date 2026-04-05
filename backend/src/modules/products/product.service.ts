@@ -10,19 +10,32 @@ import { ApiError } from "../shared/api-error";
 import { db } from "../../config/db";
 
 import { stores } from "../stores/store.db";
+import { merchants } from "../auth/auth.schema";
 import { orders } from "../orders/order.db";
 
 export const getStoreByUser = async (userId: string) => {
-  console.log("Looking for store with userId:", userId);
+  console.log("Looking for merchant with userId:", userId);
 
+  // First, find the merchant for this user
+  const merchant = await db.query.merchants.findFirst({
+    where: eq(merchants.userId, userId),
+  });
+
+  if (!merchant) {
+    throw new ApiError(404, "Merchant not found for this user");
+  }
+
+  console.log("Looking for store with merchantId:", merchant.id);
+
+  // Then, find the store for this merchant
   const store = await db.query.stores.findFirst({
-    where: (stores, { eq }) => eq(stores.userId, userId),
+    where: eq(stores.merchantId, merchant.id),
   });
 
   console.log("Store found:", store);
 
   if (!store) {
-    throw new ApiError(404, "Store not found for this user");
+    throw new ApiError(404, "Store not found for this merchant");
   }
 
   if (store.isSuspended) {

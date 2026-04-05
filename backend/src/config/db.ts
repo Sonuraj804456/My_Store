@@ -3,13 +3,13 @@ import { Pool } from "pg";
 import { env } from "./env";
 
 // schemas
-import * as authSchema from "../modules/auth/auth.schema";
-import * as storeSchema from "../modules/stores/store.db";
-import * as productSchema from "../modules/products/product.db";
-import * as orderSchema from "../modules/orders/order.db"; // 👈 ADD THIS
-import * as payoutSchema from "../modules/payout/payout.db";
-import * as downloadSchema from "../modules/download/download.db";
-import * as messageSchema from "../modules/messages/message.db";
+import { user, merchants, customers, session, account, verification, userRelations, merchantRelations, customerRelations, sessionRelations, accountRelations } from "../modules/auth/auth.schema";
+import { stores } from "../modules/stores/store.db";
+import { products, categories, productCategories, productVariants, productMedia } from "../modules/products/product.db";
+import { orders } from "../modules/orders/order.db";
+import { payouts } from "../modules/payout/payout.db";
+import { digitalDownloads, downloadLogs } from "../modules/download/download.db";
+import { conversations, messages } from "../modules/messages/message.db";
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
@@ -17,12 +17,28 @@ const pool = new Pool({
 
 export const db = drizzle(pool, {
   schema: {
-    ...authSchema,
-    ...storeSchema,
-    ...productSchema,
-    ...orderSchema, // 👈 ADD THIS
-    ...payoutSchema,
-    ...downloadSchema,
-    ...messageSchema,
+    user,
+    merchants,
+    customers,
+    session,
+    account,
+    verification,
+    userRelations,
+    merchantRelations,
+    customerRelations,
+    sessionRelations,
+    accountRelations,
+    stores,
+    products,
+    categories,
+    productCategories,
+    productVariants,
+    productMedia,
+    orders,
+    payouts,
+    digitalDownloads,
+    downloadLogs,
+    conversations,
+    messages,
   },
 });

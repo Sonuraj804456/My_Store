@@ -3,6 +3,7 @@ import { orderDb } from "../orders/order.db";
 import { db } from "../../config/db";
 import { messageDb } from "./message.db";
 import { stores as storeTable } from "../stores/store.db";
+import { merchants, customers } from "../auth/auth.schema";
 import { adminAuditService } from "../admin/admin-audit.service";
 import { eq } from "drizzle-orm";
 
@@ -22,9 +23,16 @@ function normalizePhone(phone: string) {
   return String(phone || "").replace(/\D/g, "");
 }
 
-function matchesGuestIdentity(order: any, email: string, phone: string) {
-  const normalizedOrderEmail = normalizeEmail(order.buyerEmail);
-  const normalizedOrderPhone = normalizePhone(order.buyerPhone);
+async function matchesGuestIdentity(order: any, email: string, phone: string) {
+  // For new schema, get customer info from the customer record
+  const customer = await db.query.customers.findFirst({
+    where: eq(customers.id, order.customerId),
+  });
+
+  if (!customer) return false;
+
+  const normalizedOrderEmail = normalizeEmail(customer.email);
+  const normalizedOrderPhone = normalizePhone(customer.phone);
   const normalizedEmail = normalizeEmail(email);
   const normalizedPhone = normalizePhone(phone);
 
@@ -53,9 +61,8 @@ async function getOrCreateConversation(order: any, buyerEmail: string) {
     const result = await messageDb.createConversation({
       orderId: order.id,
       storeId: order.storeId,
-      creatorId: store.userId,
-      buyerId: order.buyerId,
-      buyerEmail,
+      merchantId: store.merchantId,
+      customerId: order.customerId,
       isDisputed: false,
     });
 
@@ -78,7 +85,7 @@ export const messageService = {
   // Buyer flows (guest supported)
   async sendBuyerMessage(orderId: string, email: string, phone: string, content: string) {
     const order = await resolveOrder(orderId);
-    if (!matchesGuestIdentity(order, email, phone)) {
+    if (!(await matchesGuestIdentity(order, email, phone))) {
       throw new ApiError(403, "Guest identity does not match order");
     }
 
@@ -86,8 +93,8 @@ export const messageService = {
 
     const message = await messageDb.createMessage({
       conversationId: conversation.id,
-      senderRole: "BUYER",
-      senderId: order.buyerId || email,
+      senderRole: "CUSTOMER",
+      senderId: order.customerId || email,
       content,
     });
 
@@ -100,7 +107,7 @@ export const messageService = {
 
   async getBuyerMessages(orderId: string, email: string, phone: string) {
     const order = await resolveOrder(orderId);
-    if (!matchesGuestIdentity(order, email, phone)) {
+    if (!(await matchesGuestIdentity(order, email, phone))) {
       throw new ApiError(403, "Guest identity does not match order");
     }
 
@@ -115,28 +122,44 @@ export const messageService = {
 
   // Creator flows
   async listCreatorConversations(userId: string) {
-    const store = await db.query.stores.findFirst({
-      where: eq(storeTable.userId, userId),
+    const merchant = await db.query.merchants.findFirst({
+      where: eq(merchants.userId, userId),
     });
 
-    if (!store) throw new ApiError(404, "Store not found for creator");
+    if (!merchant) throw new ApiError(404, "Merchant not found");
+
+    const store = await db.query.stores.findFirst({
+      where: eq(storeTable.merchantId, merchant.id),
+    });
+
+    if (!store) throw new ApiError(404, "Store not found for merchant");
 
     return messageDb.listConversationsByStore(store.id);
   },
 
   async getCreatorConversation(conversationId: string, userId: string) {
+    const merchant = await db.query.merchants.findFirst({
+      where: eq(merchants.userId, userId),
+    });
+    if (!merchant) throw new ApiError(403, "Access denied: not a merchant");
+
     const conversation = await messageDb.findConversationById(conversationId);
     if (!conversation) throw new ApiError(404, "Conversation not found");
-    if (conversation.creatorId !== userId) throw new ApiError(403, "Access denied");
+    if (conversation.merchantId !== merchant.id) throw new ApiError(403, "Access denied");
 
     const messages = await messageDb.listMessagesByConversation(conversationId);
     return { conversation, messages };
   },
 
   async sendCreatorMessage(conversationId: string, userId: string, content: string) {
+    const merchant = await db.query.merchants.findFirst({
+      where: eq(merchants.userId, userId),
+    });
+    if (!merchant) throw new ApiError(403, "Access denied: not a merchant");
+
     const conversation = await messageDb.findConversationById(conversationId);
     if (!conversation) throw new ApiError(404, "Conversation not found");
-    if (conversation.creatorId !== userId) throw new ApiError(403, "Access denied");
+    if (conversation.merchantId !== merchant.id) throw new ApiError(403, "Access denied");
 
     const store = await resolveStore(conversation.storeId);
     if (store.isSuspended) {
@@ -145,8 +168,8 @@ export const messageService = {
 
     const message = await messageDb.createMessage({
       conversationId,
-      senderRole: "CREATOR",
-      senderId: userId,
+      senderRole: "MERCHANT",
+      senderId: merchant.id,
       content,
     });
 
@@ -164,12 +187,8 @@ export const messageService = {
     if (conversation.orderId !== orderId) throw new ApiError(400, "Conversation/order mismatch");
 
     const order = await resolveOrder(orderId);
-    if (!matchesGuestIdentity(order, email, phone)) {
+    if (!(await matchesGuestIdentity(order, email, phone))) {
       throw new ApiError(403, "Guest identity does not match order");
-    }
-
-    if (!matchesGuestIdentity({ buyerEmail: conversation.buyerEmail, buyerPhone: order.buyerPhone }, email, phone)) {
-      throw new ApiError(403, "Access denied");
     }
 
     if (conversation.isDisputed) {

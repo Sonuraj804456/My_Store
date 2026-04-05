@@ -30,6 +30,8 @@ vi.mock("../src/config/db", () => ({
   db: {
     query: {
       stores: { findFirst: vi.fn() },
+      customers: { findFirst: vi.fn() },
+      merchants: { findFirst: vi.fn() },
     },
   },
 }));
@@ -43,10 +45,17 @@ describe("Message module", () => {
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
       storeId: "s1",
-      buyerId: "b1",
+      customerId: "c1",
       buyerEmail: "test@mail.com",
       buyerPhone: "9999999999",
       status: "PAID",
+    });
+
+    (db.query.customers.findFirst as any).mockResolvedValue({
+      id: "c1",
+      email: "test@mail.com",
+      phone: "9999999999",
+      name: "Test Buyer",
     });
 
     (messageDb.findConversationByOrderId as any).mockResolvedValue(null);
@@ -58,17 +67,24 @@ describe("Message module", () => {
 
     expect(result.id).toBe("m1");
     expect(messageDb.createConversation).toHaveBeenCalled();
-    expect(messageDb.createMessage).toHaveBeenCalledWith(expect.objectContaining({ senderRole: "BUYER" }));
+    expect(messageDb.createMessage).toHaveBeenCalledWith(expect.objectContaining({ senderRole: "CUSTOMER" }));
   });
 
   it("should normalize email/phone and allow buyer message for equivalent identity", async () => {
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
       storeId: "s1",
-      buyerId: "b1",
+      customerId: "c1",
       buyerEmail: "test@mail.com",
       buyerPhone: "9999999999",
       status: "PAID",
+    });
+
+    (db.query.customers.findFirst as any).mockResolvedValue({
+      id: "c1",
+      email: "test@mail.com",
+      phone: "9999999999",
+      name: "Test Buyer",
     });
 
     (messageDb.findConversationByOrderId as any).mockResolvedValue(null);
@@ -86,9 +102,17 @@ describe("Message module", () => {
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
       storeId: "s1",
+      customerId: "c1",
       buyerEmail: "a@mail.com",
       buyerPhone: "111",
       status: "PAID",
+    });
+
+    (db.query.customers.findFirst as any).mockResolvedValue({
+      id: "c1",
+      email: "a@mail.com",
+      phone: "111",
+      name: "Guest Buyer",
     });
 
     await expect(
@@ -97,9 +121,14 @@ describe("Message module", () => {
   });
 
   it("should enforce creator store isolation", async () => {
+    (db.query.merchants.findFirst as any).mockResolvedValue({
+      id: "merchant1",
+      userId: "creator1",
+    });
+
     (messageDb.findConversationById as any).mockResolvedValue({
       id: "c1",
-      creatorId: "creator2",
+      merchantId: "merchant2",
     });
 
     await expect(
@@ -111,10 +140,17 @@ describe("Message module", () => {
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
       storeId: "s1",
-      buyerId: "b1",
+      customerId: "c1",
       buyerEmail: "test@mail.com",
       buyerPhone: "9999999999",
       status: "PAID",
+    });
+
+    (db.query.customers.findFirst as any).mockResolvedValue({
+      id: "c1",
+      email: "test@mail.com",
+      phone: "9999999999",
+      name: "Test Buyer",
     });
 
     (messageDb.findConversationByOrderId as any).mockResolvedValue({ id: "c1" });
@@ -125,10 +161,15 @@ describe("Message module", () => {
   });
 
   it("should block creator from sending message when store is suspended", async () => {
+    (db.query.merchants.findFirst as any).mockResolvedValue({
+      id: "merchant1",
+      userId: "creator1",
+    });
+
     (messageDb.findConversationById as any).mockResolvedValue({
       id: "c1",
       storeId: "s1",
-      creatorId: "creator1",
+      merchantId: "merchant1",
     });
 
     (db.query.stores.findFirst as any).mockResolvedValue({
@@ -151,9 +192,17 @@ describe("Message module", () => {
 
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
+      customerId: "c1",
       buyerEmail: "test@mail.com",
       buyerPhone: "9999999999",
       status: "PAID",
+    });
+
+    (db.query.customers.findFirst as any).mockResolvedValue({
+      id: "c1",
+      email: "test@mail.com",
+      phone: "9999999999",
+      name: "Test Buyer",
     });
 
     (messageDb.setDispute as any).mockResolvedValue({ isDisputed: true });
@@ -174,9 +223,17 @@ describe("Message module", () => {
 
     (orderDb.findById as any).mockResolvedValue({
       id: "o1",
+      customerId: "c1",
       buyerEmail: "test@mail.com",
       buyerPhone: "9999999999",
       status: "PAID",
+    });
+
+    (db.query.customers.findFirst as any).mockResolvedValue({
+      id: "c1",
+      email: "test@mail.com",
+      phone: "9999999999",
+      name: "Test Buyer",
     });
 
     await expect(

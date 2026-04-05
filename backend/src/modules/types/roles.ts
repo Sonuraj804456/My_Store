@@ -1,8 +1,5 @@
-export enum Roles {
-  ADMIN = "ADMIN",
-  CREATOR = "CREATOR",
-  BUYER = "BUYER"
-}
+// Roles enum removed - use domain-based permission checks instead
+// ADMIN - controlled via ENV variable (ADMIN_USER_IDS)
+// MERCHANT/CREATOR - checked via merchants table
+// CUSTOMER/BUYER - checked via customers table
 
-// string union that represents the same possible values as the enum
-export type Role = `${Roles}`;

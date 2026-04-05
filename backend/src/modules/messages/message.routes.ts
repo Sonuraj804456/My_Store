@@ -2,15 +2,13 @@ import { Router } from "express";
 import { messageController } from "./message.controller";
 import { validateBody } from "../shared/validate-body";
 import { buyerMessageSchema, creatorMessageSchema, adminDisputeSchema } from "./message.schema";
-import { requireAuth } from "../auth/auth.middleware";
-import { requireRole } from "../auth/requireRole";
+import { requireAuth, requireMerchant, requireAdmin } from "../auth/auth.middleware";
 import { ipRateLimiter } from "../shared/rate-limit";
-import { Roles } from "../types/roles";
 import { z } from "zod";
 
 const router: Router = Router();
 
-// BUYER (guest) endpoints
+// CUSTOMER (guest) endpoints
 router.post(
   "/messages/order/:orderId",
   ipRateLimiter,
@@ -20,25 +18,25 @@ router.post(
 
 router.get("/messages/order/:orderId", messageController.getBuyerMessages);
 
-// CREATOR endpoints
+// MERCHANT endpoints
 router.get(
   "/messages",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   messageController.listCreatorConversations
 );
 
 router.get(
   "/messages/:conversationId",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   messageController.getCreatorConversation
 );
 
 router.post(
   "/messages/:conversationId",
   requireAuth,
-  requireRole(Roles.CREATOR),
+  requireMerchant,
   ipRateLimiter,
   validateBody(creatorMessageSchema),
   messageController.sendCreatorMessage
@@ -52,7 +50,7 @@ router.patch(
 
 // ADMIN endpoints
 const adminRouter = Router();
-adminRouter.use(requireAuth, requireRole(Roles.ADMIN));
+adminRouter.use(requireAuth, requireAdmin);
 adminRouter.get("/messages", messageController.listAdminConversations);
 adminRouter.get("/messages/:conversationId", messageController.getAdminConversation);
 adminRouter.patch("/messages/:conversationId/resolve", validateBody(adminDisputeSchema), messageController.resolveDispute);

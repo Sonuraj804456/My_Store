@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { eq, and, isNull, gte, lte } from "drizzle-orm";
 import { db } from "../../config/db";
+import { customers } from "../auth/auth.schema";
 
 /* ================= ENUMS ================= */
 
@@ -38,10 +39,7 @@ export const orders = pgTable("orders", {
   storeId: uuid("store_id").notNull(),
   productId: uuid("product_id").notNull(),
   variantId: uuid("variant_id").notNull(),
-  buyerId: uuid("buyer_id"),
-  buyerEmail: varchar("buyer_email", { length: 255 }).notNull(),
-  buyerPhone: varchar("buyer_phone", { length: 20 }).notNull(),
-  buyerName: varchar("buyer_name", { length: 255 }).notNull(),
+  customerId: uuid("customer_id").notNull(),
   shippingAddress: jsonb("shipping_address").notNull(),
   quantity: integer("quantity").notNull(),
   priceAtPurchase: numeric("price_at_purchase").notNull(),
@@ -55,19 +53,27 @@ export const orders = pgTable("orders", {
   deletedAt: timestamp("deleted_at"),
 });
 
-export const buyers = pgTable("buyers", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  email: varchar("email", { length: 255 }).notNull(),
-  phone: varchar("phone", { length: 20 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 /* ================= DB FUNCTIONS ================= */
 
 export const orderDb = {
   create: (data: any) =>
     db.insert(orders).values(data).returning(),
+
+  findBuyer: (email: string, phone: string) =>
+    db.query.customers.findFirst({
+      where: and(eq(customers.email, email), eq(customers.phone, phone)),
+    }),
+
+  findBuyerById: (id: string) =>
+    db.query.customers.findFirst({
+      where: eq(customers.id, id),
+    }),
+
+  createBuyer: (data: any) =>
+    db.insert(customers)
+      .values(data)
+      .returning()
+      .then((rows) => rows[0]),
 
   findById: (id: string) =>
     db.query.orders.findFirst({
@@ -113,9 +119,9 @@ export const orderDb = {
     });
   },
 
-  listByBuyer: (buyerId: string) =>
+  listByCustomer: (customerId: string) =>
     db.query.orders.findMany({
-      where: and(eq(orders.buyerId, buyerId), isNull(orders.deletedAt)),
+      where: and(eq(orders.customerId, customerId), isNull(orders.deletedAt)),
     }),
 
   listAll: () =>
@@ -128,17 +134,4 @@ export const orderDb = {
       .update(orders)
       .set({ deletedAt: new Date() })
       .where(eq(orders.id, id)),
-
-  findBuyer: (email: string, phone: string) =>
-    db.query.buyers.findFirst({
-      where: and(eq(buyers.email, email), eq(buyers.phone, phone)),
-    }),
-
-  findBuyerById: (id: string) =>
-    db.query.buyers.findFirst({
-      where: eq(buyers.id, id),
-    }),
-
-  createBuyer: (data: any) =>
-    db.insert(buyers).values(data).returning(),
 };
